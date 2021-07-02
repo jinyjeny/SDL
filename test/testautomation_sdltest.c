@@ -89,6 +89,7 @@ int
 sdltest_randomNumber(void *arg)
 {
   Sint64 result;
+  Uint64 uresult;
   double dresult;
   Uint64 umax;
   Sint64 min, max;
@@ -126,7 +127,7 @@ sdltest_randomNumber(void *arg)
   SDLTest_AssertPass("Call to SDLTest_RandomSint32");
   SDLTest_AssertCheck(result >= min && result <= max, "Verify result value, expected: [%"SDL_PRIs64",%"SDL_PRIs64"], got: %"SDL_PRIs64, min, max, result);
 
-  SDLTest_RandomUint64();
+  uresult = SDLTest_RandomUint64();
   SDLTest_AssertPass("Call to SDLTest_RandomUint64");
 
   result = SDLTest_RandomSint64();

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -33,9 +33,6 @@
 #if SDL_THREAD_OS2
 #include "thread/os2/SDL_systls_c.h"
 #endif
-
-/* this checks for HAVE_DBUS_DBUS_H internally. */
-#include "core/linux/SDL_dbus.h"
 
 #if defined(__EMSCRIPTEN__)
 #include <emscripten.h>
@@ -157,10 +154,6 @@ SDL_InitSubSystem(Uint32 flags)
 
     /* Clear the error message */
     SDL_ClearError();
-
-#if SDL_USE_LIBDBUS
-    SDL_DBus_Init();
-#endif
 
     if ((flags & SDL_INIT_GAMECONTROLLER)) {
         /* game controller implies joystick */
@@ -449,10 +442,6 @@ SDL_Quit(void)
     SDL_AssertionsQuit();
     SDL_LogResetPriorities();
 
-#if SDL_USE_LIBDBUS
-    SDL_DBus_Quit();
-#endif
-
     /* Now that every subsystem has been quit, we reset the subsystem refcount
      * and the list of initialized subsystems.
      */
@@ -479,7 +468,7 @@ SDL_GetRevision(void)
 int
 SDL_GetRevisionNumber(void)
 {
-    return 0;  /* doesn't make sense without Mercurial. */
+    return SDL_REVISION_NUMBER;
 }
 
 /* Get the name of the platform */
@@ -538,8 +527,6 @@ SDL_GetPlatform()
     return "iOS";
 #elif __PSP__
     return "PlayStation Portable";
-#elif __VITA__
-    return "PlayStation Vita";
 #else
     return "Unknown (see SDL_platform.h)";
 #endif

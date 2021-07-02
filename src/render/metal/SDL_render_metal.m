@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -59,7 +59,7 @@ extern int SDL_RecreateWindow(SDL_Window * window, Uint32 flags);
 
 /* macOS requires constants in a buffer to have a 256 byte alignment. */
 /* Use native type alignments from https://developer.apple.com/metal/Metal-Shading-Language-Specification.pdf */
-#if defined(__MACOSX__) || TARGET_OS_SIMULATOR || TARGET_OS_MACCATALYST
+#if defined(__MACOSX__) || TARGET_OS_SIMULATOR
 #define CONSTANT_ALIGN(x) (256)
 #else
 #define CONSTANT_ALIGN(x) (x < 4 ? 4 : x)
@@ -803,7 +803,6 @@ METAL_UpdateTexture(SDL_Renderer * renderer, SDL_Texture * texture,
     return 0;
 }}
 
-#if SDL_HAVE_YUV
 static int
 METAL_UpdateTextureYUV(SDL_Renderer * renderer, SDL_Texture * texture,
                     const SDL_Rect * rect,
@@ -835,34 +834,6 @@ METAL_UpdateTextureYUV(SDL_Renderer * renderer, SDL_Texture * texture,
 
     return 0;
 }}
-
-static int
-METAL_UpdateTextureNV(SDL_Renderer * renderer, SDL_Texture * texture,
-                    const SDL_Rect * rect,
-                    const Uint8 *Yplane, int Ypitch,
-                    const Uint8 *UVplane, int UVpitch)
-{ @autoreleasepool {
-    METAL_TextureData *texturedata = (__bridge METAL_TextureData *)texture->driverdata;
-    SDL_Rect UVrect = {rect->x / 2, rect->y / 2, (rect->w + 1) / 2, (rect->h + 1) / 2};
-
-    /* Bail out if we're supposed to update an empty rectangle */
-    if (rect->w <= 0 || rect->h <= 0) {
-        return 0;
-    }
-
-    if (METAL_UpdateTextureInternal(renderer, texturedata, texturedata.mtltexture, *rect, 0, Yplane, Ypitch) < 0) {
-        return -1;
-    }
-
-    if (METAL_UpdateTextureInternal(renderer, texturedata, texturedata.mtltexture_uv, UVrect, 0, UVplane, UVpitch) < 0) {
-        return -1;
-    }
-
-    texturedata.hasdata = YES;
-
-    return 0;
-}}
-#endif
 
 static int
 METAL_LockTexture(SDL_Renderer * renderer, SDL_Texture * texture,
@@ -1879,10 +1850,7 @@ METAL_CreateRenderer(SDL_Window * window, Uint32 flags)
     renderer->SupportsBlendMode = METAL_SupportsBlendMode;
     renderer->CreateTexture = METAL_CreateTexture;
     renderer->UpdateTexture = METAL_UpdateTexture;
-#if SDL_HAVE_YUV
     renderer->UpdateTextureYUV = METAL_UpdateTextureYUV;
-    renderer->UpdateTextureNV = METAL_UpdateTextureNV;
-#endif
     renderer->LockTexture = METAL_LockTexture;
     renderer->UnlockTexture = METAL_UnlockTexture;
     renderer->SetTextureScaleMode = METAL_SetTextureScaleMode;
@@ -1907,7 +1875,7 @@ METAL_CreateRenderer(SDL_Window * window, Uint32 flags)
 
     renderer->always_batch = SDL_TRUE;
 
-#if (defined(__MACOSX__) && defined(MAC_OS_X_VERSION_10_13)) || TARGET_OS_MACCATALYST
+#if defined(__MACOSX__) && defined(MAC_OS_X_VERSION_10_13)
     if (@available(macOS 10.13, *)) {
         data.mtllayer.displaySyncEnabled = (flags & SDL_RENDERER_PRESENTVSYNC) != 0;
         if (data.mtllayer.displaySyncEnabled) {
@@ -1921,7 +1889,7 @@ METAL_CreateRenderer(SDL_Window * window, Uint32 flags)
 
     /* https://developer.apple.com/metal/Metal-Feature-Set-Tables.pdf */
     int maxtexsize = 4096;
-#if defined(__MACOSX__) || TARGET_OS_MACCATALYST
+#if defined(__MACOSX__)
     maxtexsize = 16384;
 #elif defined(__TVOS__)
     maxtexsize = 8192;

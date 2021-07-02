@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -75,24 +75,24 @@
 #define SL_ANDROID_SPEAKER_7DOT1 (SL_ANDROID_SPEAKER_5DOT1 | SL_SPEAKER_SIDE_LEFT | SL_SPEAKER_SIDE_RIGHT)
 
 /* engine interfaces */
-static SLObjectItf engineObject = NULL;
-static SLEngineItf engineEngine = NULL;
+static SLObjectItf engineObject;
+static SLEngineItf engineEngine;
 
 /* output mix interfaces */
-static SLObjectItf outputMixObject = NULL;
+static SLObjectItf outputMixObject;
 
 /* buffer queue player interfaces */
-static SLObjectItf bqPlayerObject = NULL;
-static SLPlayItf bqPlayerPlay = NULL;
-static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue = NULL;
+static SLObjectItf bqPlayerObject;
+static SLPlayItf bqPlayerPlay;
+static SLAndroidSimpleBufferQueueItf bqPlayerBufferQueue;
 #if 0
 static SLVolumeItf bqPlayerVolume;
 #endif
 
 /* recorder interfaces */
-static SLObjectItf recorderObject = NULL;
-static SLRecordItf recorderRecord = NULL;
-static SLAndroidSimpleBufferQueueItf recorderBufferQueue = NULL;
+static SLObjectItf recorderObject;
+static SLRecordItf recorderRecord;
+static SLAndroidSimpleBufferQueueItf recorderBufferQueue;
 
 #if 0
 static const char *sldevaudiorecorderstr = "SLES Audio Recorder";
@@ -355,6 +355,8 @@ openslES_CreatePCMRecorder(_THIS)
 
 failed:
 
+    openslES_DestroyPCMRecorder(this);
+
     return SDL_SetError("Open device failed!");
 }
 
@@ -578,6 +580,8 @@ openslES_CreatePCMPlayer(_THIS)
     return 0;
 
 failed:
+
+    openslES_DestroyPCMPlayer(this);
 
     return SDL_SetError("Open device failed!");
 }

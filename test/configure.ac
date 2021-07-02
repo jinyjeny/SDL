@@ -1,6 +1,6 @@
 dnl Process this file with autoconf to produce a configure script.
 AC_INIT
-AC_CONFIG_SRCDIR([loopwave.c])
+AC_CONFIG_SRCDIR([README])
 
 dnl Detect the canonical build and host environments
 AC_CONFIG_AUX_DIRS($srcdir/../build-scripts)
@@ -21,7 +21,7 @@ ISMACOSX="false"
 
 dnl Figure out which math library to use
 case "$host" in
-    *-*-cygwin* | *-*-mingw*)
+    *-*-cygwin* | *-*-mingw32*)
         ISWINDOWS="true"
         EXE=".exe"
         MATHLIB=""
@@ -80,9 +80,7 @@ case "$host" in
         ISUNIX="true"
         EXE=""
         MATHLIB="-lm"
-        dnl Use the new libOpenGL if present.
-        AC_CHECK_LIB(OpenGL, glBegin,
-            [SYS_GL_LIBS="-lOpenGL"],[SYS_GL_LIBS="-lGL"])
+        SYS_GL_LIBS="-lGL"
         ;;
 esac
 AC_SUBST(EXE)
@@ -124,34 +122,43 @@ fi
 dnl Check for OpenGL
 AC_MSG_CHECKING(for OpenGL support)
 have_opengl=no
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+AC_TRY_COMPILE([
  #include "SDL_opengl.h"
  #ifndef SDL_VIDEO_OPENGL
  #error SDL_VIDEO_OPENGL
  #endif
-]],[])], [have_opengl=yes],[])
+],[
+],[
+have_opengl=yes
+])
 AC_MSG_RESULT($have_opengl)
 
 dnl Check for OpenGL ES
 AC_MSG_CHECKING(for OpenGL ES support)
 have_opengles=no
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+AC_TRY_COMPILE([
  #include "SDL_opengles.h"
  #ifndef SDL_VIDEO_OPENGL_ES
  #error SDL_VIDEO_OPENGL_ES
  #endif
-]],[])] ,[have_opengles=yes],[])
+],[
+],[
+have_opengles=yes
+])
 AC_MSG_RESULT($have_opengles)
 
 dnl Check for OpenGL ES2
 AC_MSG_CHECKING(for OpenGL ES2 support)
 have_opengles2=no
-AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[
+AC_TRY_COMPILE([
  #include "SDL_opengles2.h"
  #ifndef SDL_VIDEO_OPENGL_ES2
  #error SDL_VIDEO_OPENGL_ES2
  #endif
-]],[])], [have_opengles2=yes],[])
+],[
+],[
+have_opengles2=yes
+])
 AC_MSG_RESULT($have_opengles2)
 
 GLLIB=""

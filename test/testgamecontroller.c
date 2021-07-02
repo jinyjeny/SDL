@@ -1,5 +1,5 @@
 /*
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -267,8 +267,7 @@ loop(void *arg)
         case SDL_CONTROLLERTOUCHPADDOWN:
         case SDL_CONTROLLERTOUCHPADMOTION:
         case SDL_CONTROLLERTOUCHPADUP:
-            SDL_Log("Controller %d touchpad %d finger %d %s %.2f, %.2f, %.2f\n",
-                event.ctouchpad.which,
+            SDL_Log("Controller touchpad %d finger %d %s %.2f, %.2f, %.2f\n",
                 event.ctouchpad.touchpad,
                 event.ctouchpad.finger,
                 (event.type == SDL_CONTROLLERTOUCHPADDOWN ? "pressed at" :
@@ -280,8 +279,7 @@ loop(void *arg)
             break;
 
         case SDL_CONTROLLERSENSORUPDATE:
-            SDL_Log("Controller %d sensor %s: %.2f, %.2f, %.2f\n",
-                event.csensor.which,
+            SDL_Log("Controller sensor %s: %.2f, %.2f, %.2f\n",
                 event.csensor.sensor == SDL_SENSOR_ACCEL ? "accelerometer" :
                 event.csensor.sensor == SDL_SENSOR_GYRO ? "gyro" : "unknown",
                 event.csensor.data[0],
@@ -293,7 +291,7 @@ loop(void *arg)
             if (event.caxis.value <= (-SDL_JOYSTICK_AXIS_MAX / 2) || event.caxis.value >= (SDL_JOYSTICK_AXIS_MAX / 2)) {
                 SetController(event.caxis.which);
             }
-            SDL_Log("Controller %d axis %s changed to %d\n", event.caxis.which, SDL_GameControllerGetStringForAxis((SDL_GameControllerAxis)event.caxis.axis), event.caxis.value);
+            SDL_Log("Controller axis %s changed to %d\n", SDL_GameControllerGetStringForAxis((SDL_GameControllerAxis)event.caxis.axis), event.caxis.value);
             break;
 
         case SDL_CONTROLLERBUTTONDOWN:
@@ -301,18 +299,10 @@ loop(void *arg)
             if (event.type == SDL_CONTROLLERBUTTONDOWN) {
                 SetController(event.cbutton.which);
             }
-            SDL_Log("Controller %d button %s %s\n", event.cbutton.which, SDL_GameControllerGetStringForButton((SDL_GameControllerButton)event.cbutton.button), event.cbutton.state ? "pressed" : "released");
+            SDL_Log("Controller button %s %s\n", SDL_GameControllerGetStringForButton((SDL_GameControllerButton)event.cbutton.button), event.cbutton.state ? "pressed" : "released");
             break;
 
         case SDL_KEYDOWN:
-            if (event.key.keysym.sym >= SDLK_0 && event.key.keysym.sym <= SDLK_9) {
-                if (gamecontroller) {
-                    int player_index = (event.key.keysym.sym - SDLK_0);
-
-                    SDL_GameControllerSetPlayerIndex(gamecontroller, player_index);
-                }
-                break;
-            }
             if (event.key.keysym.sym != SDLK_ESCAPE) {
                 break;
             }
@@ -346,11 +336,7 @@ loop(void *arg)
             if (SDL_GameControllerGetButton(gamecontroller, (SDL_GameControllerButton)i) == SDL_PRESSED) {
                 SDL_bool on_front = (i < SDL_CONTROLLER_BUTTON_PADDLE1 || i > SDL_CONTROLLER_BUTTON_PADDLE4);
                 if (on_front == showing_front) {
-                    SDL_Rect dst;
-                    dst.x = button_positions[i].x;
-                    dst.y = button_positions[i].y;
-                    dst.w = 50;
-                    dst.h = 50;
+                    const SDL_Rect dst = { button_positions[i].x, button_positions[i].y, 50, 50 };
                     SDL_RenderCopyEx(screen, button, NULL, &dst, 0, NULL, SDL_FLIP_NONE);
                 }
             }
@@ -361,20 +347,12 @@ loop(void *arg)
                 const Sint16 deadzone = 8000;  /* !!! FIXME: real deadzone */
                 const Sint16 value = SDL_GameControllerGetAxis(gamecontroller, (SDL_GameControllerAxis)(i));
                 if (value < -deadzone) {
+                    const SDL_Rect dst = { axis_positions[i].x, axis_positions[i].y, 50, 50 };
                     const double angle = axis_positions[i].angle;
-                    SDL_Rect dst;
-                    dst.x = axis_positions[i].x;
-                    dst.y = axis_positions[i].y;
-                    dst.w = 50;
-                    dst.h = 50;
                     SDL_RenderCopyEx(screen, axis, NULL, &dst, angle, NULL, SDL_FLIP_NONE);
                 } else if (value > deadzone) {
+                    const SDL_Rect dst = { axis_positions[i].x, axis_positions[i].y, 50, 50 };
                     const double angle = axis_positions[i].angle + 180.0;
-                    SDL_Rect dst;
-                    dst.x = axis_positions[i].x;
-                    dst.y = axis_positions[i].y;
-                    dst.w = 50;
-                    dst.h = 50;
                     SDL_RenderCopyEx(screen, axis, NULL, &dst, angle, NULL, SDL_FLIP_NONE);
                 }
             }
@@ -447,7 +425,6 @@ main(int argc, char *argv[])
 
     SDL_SetHint(SDL_HINT_ACCELEROMETER_AS_JOYSTICK, "0");
     SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE, "1");
-    SDL_SetHint(SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE, "1");
     SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
 
     /* Enable standard application logging */

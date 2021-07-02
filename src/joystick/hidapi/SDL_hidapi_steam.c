@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2018 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -1016,18 +1016,14 @@ HIDAPI_DriverSteam_OpenJoystick(SDL_HIDAPI_Device *device, SDL_Joystick *joystic
     return SDL_TRUE;
 
 error:
-    SDL_LockMutex(device->dev_lock);
-    {
-        if (device->dev) {
-            hid_close(device->dev);
-            device->dev = NULL;
-        }
-        if (device->context) {
-            SDL_free(device->context);
-            device->context = NULL;
-        }
+    if (device->dev) {
+        hid_close(device->dev);
+        device->dev = NULL;
     }
-    SDL_UnlockMutex(device->dev_lock);
+    if (device->context) {
+        SDL_free(device->context);
+        device->context = NULL;
+    }
     return SDL_FALSE;
 }
 
@@ -1174,17 +1170,12 @@ HIDAPI_DriverSteam_UpdateDevice(SDL_HIDAPI_Device *device)
 static void
 HIDAPI_DriverSteam_CloseJoystick(SDL_HIDAPI_Device *device, SDL_Joystick *joystick)
 {
-    SDL_LockMutex(device->dev_lock);
-    {
-        CloseSteamController(device->dev);
+    CloseSteamController(device->dev);
+    hid_close(device->dev);
+    device->dev = NULL;
 
-        hid_close(device->dev);
-        device->dev = NULL;
-
-        SDL_free(device->context);
-        device->context = NULL;
-    }
-    SDL_UnlockMutex(device->dev_lock);
+    SDL_free(device->context);
+    device->context = NULL;
 }
 
 static void
