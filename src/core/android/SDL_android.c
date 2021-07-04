@@ -635,6 +635,8 @@ JNIEXPORT void JNICALL SDL_JAVA_INTERFACE(nativeSetupJNI)(JNIEnv *env, jclass cl
         __android_log_print(ANDROID_LOG_WARN, "SDL", "Missing some Java callbacks, do you have the latest version of SDLActivity.java?");
     }
 
+    libsdl_initialize_additional(mJavaVM, env);
+
     checkJNIReady();
 }
 
