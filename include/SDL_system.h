@@ -111,39 +111,53 @@ extern DECLSPEC void SDLCALL SDL_iPhoneSetEventPump(SDL_bool enabled);
 extern DECLSPEC void * SDLCALL SDL_AndroidGetJNIEnv(void);
 
 /**
-   \brief Get the SDL Activity object for the application
-
-   This returns jobject, but the prototype is void* so we don't need jni.h
-   The jobject returned by SDL_AndroidGetActivity is a local reference.
-   It is the caller's responsibility to properly release it
-   (using env->Push/PopLocalFrame or manually with env->DeleteLocalRef)
+ * Retrieve the Java instance of the Android activity class.
+ *
+ * The prototype of the function in SDL's code actually declares a void*
+ * return type, even if the implementation returns a jobject. The rationale
+ * being that the SDL headers can avoid including jni.h.
+ *
+ * The jobject returned by the function is a local reference and must be
+ * released by the caller. See the PushLocalFrame() and PopLocalFrame() or
+ * DeleteLocalRef() functions of the Java native interface:
+ *
+ * https://docs.oracle.com/javase/1.5.0/docs/guide/jni/spec/functions.html
+ *
+ * \returns the jobject representing the instance of the Activity class of the
+ *          Android application, or NULL on error.
+ *
+ * \since This function is available since SDL 2.0.0.
+ *
+ * \sa SDL_AndroidGetJNIEnv
  */
 extern DECLSPEC void * SDLCALL SDL_AndroidGetActivity(void);
 
 /**
-   \brief Return API level of the current device
-
-    API level 30: Android 11
-    API level 29: Android 10
-    API level 28: Android 9
-    API level 27: Android 8.1
-    API level 26: Android 8.0
-    API level 25: Android 7.1
-    API level 24: Android 7.0
-    API level 23: Android 6.0
-    API level 22: Android 5.1
-    API level 21: Android 5.0
-    API level 20: Android 4.4W
-    API level 19: Android 4.4
-    API level 18: Android 4.3
-    API level 17: Android 4.2
-    API level 16: Android 4.1
-    API level 15: Android 4.0.3
-    API level 14: Android 4.0
-    API level 13: Android 3.2
-    API level 12: Android 3.1
-    API level 11: Android 3.0
-    API level 10: Android 2.3.3
+ * Query Android API level of the current device.
+ *
+ * - API level 30: Android 11
+ * - API level 29: Android 10
+ * - API level 28: Android 9
+ * - API level 27: Android 8.1
+ * - API level 26: Android 8.0
+ * - API level 25: Android 7.1
+ * - API level 24: Android 7.0
+ * - API level 23: Android 6.0
+ * - API level 22: Android 5.1
+ * - API level 21: Android 5.0
+ * - API level 20: Android 4.4W
+ * - API level 19: Android 4.4
+ * - API level 18: Android 4.3
+ * - API level 17: Android 4.2
+ * - API level 16: Android 4.1
+ * - API level 15: Android 4.0.3
+ * - API level 14: Android 4.0
+ * - API level 13: Android 3.2
+ * - API level 12: Android 3.1
+ * - API level 11: Android 3.0
+ * - API level 10: Android 2.3.3
+ *
+ * \returns the Android API level.
  */
 extern DECLSPEC int SDLCALL SDL_GetAndroidSDKVersion(void);
 
@@ -200,7 +214,14 @@ extern DECLSPEC int SDLCALL SDL_AndroidGetExternalStorageState(void);
 extern DECLSPEC const char * SDLCALL SDL_AndroidGetExternalStoragePath(void);
 
 /**
-   \brief Request permissions at runtime.
+ * Request permissions at runtime.
+ *
+ * This blocks the calling thread until the permission is granted or denied.
+ *
+ * \param permission The permission to request.
+ * \returns SDL_TRUE if the permission was granted, SDL_FALSE otherwise.
+ */
+extern DECLSPEC SDL_bool SDLCALL SDL_AndroidRequestPermission(const char *permission);
 
    This blocks the calling thread until the permission is granted or
    denied. Returns SDL_TRUE if the permission was granted.
@@ -292,7 +313,7 @@ extern DECLSPEC const char * SDLCALL SDL_WinRTGetFSPathUTF8(SDL_WinRT_Path pathT
 /**
  *  \brief Detects the device family of WinRT plattform on runtime
  *
- *  \return Device family
+ * \returns a value from the SDL_WinRT_DeviceFamily enum.
  */
 extern DECLSPEC SDL_WinRT_DeviceFamily SDLCALL SDL_WinRTGetDeviceFamily();
 

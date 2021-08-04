@@ -21,9 +21,9 @@ dnl Set various version strings - taken gratefully from the GTk sources
 #
 SDL_MAJOR_VERSION=2
 SDL_MINOR_VERSION=0
-SDL_MICRO_VERSION=14
+SDL_MICRO_VERSION=16
 SDL_INTERFACE_AGE=0
-SDL_BINARY_AGE=14
+SDL_BINARY_AGE=16
 SDL_VERSION=$SDL_MAJOR_VERSION.$SDL_MINOR_VERSION.$SDL_MICRO_VERSION
 
 AC_SUBST(SDL_MAJOR_VERSION)
@@ -79,6 +79,17 @@ case "$host" in
         INCLUDE="$INCLUDE -idirafter $srcdir/src/video/khronos"
         ;;
 esac
+
+dnl use CXX for linker on Haiku
+case "$host" in
+    *-*-haiku*)
+        LINKER='$(CXX)'
+        ;;
+    *)
+        LINKER='$(CC)'
+        ;;
+esac
+AC_SUBST(LINKER)
 
 if test x$srcdir != x.; then
     INCLUDE="-Iinclude $INCLUDE"
@@ -758,9 +769,10 @@ AS_HELP_STRING([--enable-sse3], [use SSE3 assembly routines [[default=maybe]]]),
         fi
     fi
 
-    AC_CHECK_HEADER(immintrin.h,
-                    have_immintrin_h_hdr=yes,
-                    have_immintrin_h_hdr=no)
+    AC_MSG_CHECKING(for immintrin.h)
+    AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[#include <immintrin.h>]])],
+       [have_immintrin_h_hdr=yes],[have_immintrin_h_hdr=no])
+    AC_MSG_RESULT($have_immintrin_h_hdr)
     if test x$have_immintrin_h_hdr = xyes; then
         AC_DEFINE(HAVE_IMMINTRIN_H, 1, [ ])
     fi
@@ -1557,7 +1569,7 @@ AS_HELP_STRING([--enable-video-wayland-qt-touch], [QtWayland server support for 
 AS_HELP_STRING([--enable-wayland-shared], [dynamically load Wayland support [[default=maybe]]]),
                           , enable_wayland_shared=maybe)
 
-            dnl FIXME: Do BSD and OS X need special cases?
+dnl FIXME: Do BSD and OS X need special cases?
             case "$host" in
                 *)
                     wayland_client_lib=[`find_lib "libwayland-client.so.*" "$WAYLAND_LIBS" | sed 's/.*\/\(.*\)/\1/; q'`]
@@ -1600,6 +1612,45 @@ AS_HELP_STRING([--enable-wayland-shared], [dynamically load Wayland support [[de
                 SUMMARY_video="${SUMMARY_video} wayland"
             fi
             have_video=yes
+
+dnl See if libdecor is available
+            AC_ARG_ENABLE(libdecor,
+[AS_HELP_STRING([--enable-libdecor], [use libdecor for Wayland client-side decorations [default=yes]])],
+                          , enable_libdecor=yes)
+            if test x$enable_libdecor = xyes; then
+                AC_MSG_CHECKING(for libdecor support)
+                AS_IF([$PKG_CONFIG --exists libdecor-0],
+                      [video_libdecor=yes],
+                      [video_libdecor=no])
+                AC_MSG_RESULT($video_libdecor)
+                if test x$video_libdecor = xyes; then
+                    EXTRA_CFLAGS="$EXTRA_CFLAGS `$PKG_CONFIG --cflags libdecor-0`"
+                    AC_DEFINE(HAVE_LIBDECOR_H, 1, [ ])
+
+                    AC_ARG_ENABLE(libdecor-shared,
+[AS_HELP_STRING([--enable-libdecor-shared], [dynamically load libdecor [default=yes]])],
+                         , enable_libdecor_shared=yes)
+
+                    if test x$enable_wayland_shared != xyes; then
+                       enable_libdecor_shared=no
+                    fi
+
+                    decor_lib=[`find_lib "libdecor-0.so.*" "" | sed 's/.*\/\(.*\)/\1/; q'`]
+
+                    if test x$have_loadso != xyes && \
+                       test x$enable_libdecor_shared = xyes; then
+                        AC_MSG_WARN([You must have SDL_LoadObject() support for dynamic libdecor loading])
+                    fi
+
+                    if test x$have_loadso = xyes && \
+                       test x$enable_libdecor_shared = xyes && test x$decor_lib != x; then
+                        echo "-- dynamic libdecor -> $decor_lib"
+                        AC_DEFINE_UNQUOTED(SDL_VIDEO_DRIVER_WAYLAND_DYNAMIC_LIBDECOR, "$decor_lib", [ ])
+                    else
+                        EXTRA_LDFLAGS="$EXTRA_LDFLAGS `$PKG_CONFIG --libs libdecor-0`"
+                    fi
+                fi
+            fi
         fi
     fi
 }
@@ -2258,8 +2309,8 @@ AS_HELP_STRING([--enable-kmsdrm-shared], [dynamically load kmsdrm support [[defa
 
             AC_MSG_CHECKING(for kmsdrm dynamic loading support)
             kmsdrm_shared=no
-            drm_lib=[`find_lib "libdrm.so.*" "$DRM_LIBS"`]
-            gbm_lib=[`find_lib "libgbm.so.*" "$DRM_LIBS"`]
+            drm_lib=[`find_lib "libdrm.so.*" "$LIBDRM_LIBS"`]
+            gbm_lib=[`find_lib "libgbm.so.*" "$LIBGBM_LIBS"`]
             if test x$have_loadso != xyes && \
                test x$enable_kmsdrm_shared = xyes; then
                 AC_MSG_WARN([You must have SDL_LoadObject() support for dynamic kmsdrm loading])
@@ -2276,6 +2327,10 @@ AS_HELP_STRING([--enable-kmsdrm-shared], [dynamically load kmsdrm support [[defa
                 SUMMARY_video="${SUMMARY_video} kmsdrm"
             fi
             AC_MSG_RESULT($kmsdrm_shared)
+            if test x$kmsdrm_shared = xyes; then
+                echo "-- dynamic libdrm -> $drm_lib"
+                echo "-- dynamic libgmb -> $gbm_lib"
+            fi
             have_video=yes
         fi
     fi
@@ -3356,10 +3411,6 @@ AS_HELP_STRING([--enable-hidapi-libusb], [use libusb for low level joystick driv
                 enable_hidapi_libusb=yes
                 require_hidapi_libusb=yes
                 ;;
-            # RAWINPUT is only available on Win32, but can be enabled if HIDAPI is
-            *-*-cygwin* | *-*-mingw32*)
-                enable_joystick_rawinput=yes
-                ;;
         esac
 
         hidapi_support=yes
@@ -3376,9 +3427,6 @@ AS_HELP_STRING([--enable-hidapi-libusb], [use libusb for low level joystick driv
 
         if test x$hidapi_support = xyes; then
             AC_DEFINE(SDL_JOYSTICK_HIDAPI, 1, [ ])
-            if test x$enable_joystick_rawinput = xyes; then
-                AC_DEFINE(SDL_JOYSTICK_RAWINPUT, 1, [ ])
-            fi
             EXTRA_CFLAGS="$EXTRA_CFLAGS -I$srcdir/src/hidapi/hidapi"
             SOURCES="$SOURCES $srcdir/src/joystick/hidapi/*.c"
             SOURCES="$SOURCES $srcdir/src/hidapi/SDL_hidapi.c"
@@ -3792,6 +3840,7 @@ AS_HELP_STRING([--enable-render-d3d], [enable the Direct3D render driver [[defau
         fi
         # Set up files for the joystick library
         if test x$enable_joystick = xyes; then
+            AC_DEFINE(SDL_JOYSTICK_RAWINPUT, 1, [ ])
             if test x$have_dinput = xyes -o x$have_xinput = xyes; then
                 if test x$have_xinput = xyes; then
                     AC_DEFINE(SDL_JOYSTICK_XINPUT, 1, [ ])
@@ -3865,7 +3914,8 @@ AS_HELP_STRING([--enable-render-d3d], [enable the Direct3D render driver [[defau
         else
             LIBUUID=-luuid
         fi
-        EXTRA_LDFLAGS="$EXTRA_LDFLAGS -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lsetupapi -lversion $LIBUUID -static-libgcc"
+        EXTRA_LDFLAGS="$EXTRA_LDFLAGS -luser32 -lgdi32 -lwinmm -limm32 -lole32 -loleaut32 -lshell32 -lsetupapi -lversion $LIBUUID"
+        BUILD_LDFLAGS="$BUILD_LDFLAGS -Wc,-static-libgcc"
         # The Windows platform requires special setup
         VERSION_SOURCES="$srcdir/src/main/windows/*.rc"
         SDLMAIN_SOURCES="$srcdir/src/main/windows/*.c"
@@ -4328,8 +4378,9 @@ if test x$video_wayland = xyes; then
         echo "	@\\$(SHELL) \\$(auxdir)/mkinstalldirs \\$(gen)" ;\
         echo "	\\$(RUN_CMD_GEN)\\$(WAYLAND_SCANNER) code \\$< \\$@" ;\
         echo ;\
-        echo "\\$(objects)/\$p-protocol.lo: \\$(gen)/\$p-protocol.c \\$(gen)/\$p-client-protocol.h" ;\
-        echo "	\\$(RUN_CMD_CC)\\$(LIBTOOL) --tag=CC --mode=compile \\$(CC) \\$(CFLAGS) \\$(EXTRA_CFLAGS) $DEPENDENCY_TRACKING_OPTIONS -c \\$< -o \\$@" ;\
+        printf '%s\n' "\\$(objects)/\$p-protocol.lo: \\$(gen)/\$p-protocol.c \\$(gen)/\$p-client-protocol.h" ;\
+        printf '%s\n' "	@\\$(SHELL) \\$(auxdir)/mkinstalldirs \\$(objects)" ;\
+        printf '%s\n' "	\\$(RUN_CMD_CC)\\$(LIBTOOL) --tag=CC --mode=compile \\$(CC) \\$(CFLAGS) \\$(EXTRA_CFLAGS) $DEPENDENCY_TRACKING_OPTIONS -c \\$< -o \\$@" ;\
         done ;\
         echo ;\
         for s in $WAYLAND_SOURCES ; do echo -n "\$s:" ; for p in $WAYLAND_PROTOCOLS ; do echo -n " \\$(gen)/\$p-client-protocol.h" ; done ; echo ; done ; echo`
@@ -4515,7 +4566,6 @@ if test x$WARN_ABOUT_ARM_SIMD_ASM_MIT = xyes; then
     SUMMARY="${SUMMARY}configure script with:\n"
     SUMMARY="${SUMMARY}\n    --disable-arm-simd\n"
 fi
-
 if test x$WARN_ABOUT_ARM_NEON_ASM_MIT = xyes; then
     SUMMARY="${SUMMARY}\nSDL is being built with ARM NEON optimizations, which\n"
     SUMMARY="${SUMMARY}uses code licensed under the MIT license. If this is a\n"

@@ -135,7 +135,21 @@ extern DECLSPEC SDL_LogPriority SDLCALL SDL_LogGetPriority(int category);
 extern DECLSPEC void SDLCALL SDL_LogResetPriorities(void);
 
 /**
- *  \brief Log a message with SDL_LOG_CATEGORY_APPLICATION and SDL_LOG_PRIORITY_INFO
+ * Log a message with SDL_LOG_CATEGORY_APPLICATION and SDL_LOG_PRIORITY_INFO.
+ *
+ * = * \param fmt a printf() style message format string
+ *
+ * \param ... additional parameters matching % tokens in the `fmt` string, if
+ *            any
+ *
+ * \sa SDL_LogCritical
+ * \sa SDL_LogDebug
+ * \sa SDL_LogError
+ * \sa SDL_LogInfo
+ * \sa SDL_LogMessage
+ * \sa SDL_LogMessageV
+ * \sa SDL_LogVerbose
+ * \sa SDL_LogWarn
  */
 extern DECLSPEC void SDLCALL SDL_Log(SDL_PRINTF_FORMAT_STRING const char *fmt, ...) SDL_PRINTF_VARARG_FUNC(1);
 

@@ -274,9 +274,11 @@ struct SDL_SysWMinfo
 #if defined(SDL_VIDEO_DRIVER_WAYLAND)
         struct
         {
-            struct wl_display *display;            /**< Wayland display */
-            struct wl_surface *surface;            /**< Wayland surface */
-            struct wl_shell_surface *shell_surface; /**< Wayland shell_surface (window manager handle) */
+            struct wl_display *display;             /**< Wayland display */
+            struct wl_surface *surface;             /**< Wayland surface */
+            void *shell_surface;                    /**< DEPRECATED Wayland shell_surface (window manager handle) */
+            struct wl_egl_window *egl_window;       /**< Wayland EGL window (native window) */
+            struct xdg_surface *xdg_surface;        /**< Wayland xdg surface (window manager handle) */
         } wl;
 #endif
 #if defined(SDL_VIDEO_DRIVER_MIR)  /* no longer available, left for API/ABI compatibility. Remove in 2.1! */
@@ -325,9 +327,9 @@ typedef struct SDL_SysWMinfo SDL_SysWMinfo;
 /**
  *  \brief This function allows access to driver-dependent window information.
  *
- *  \param window The window about which information is being requested
- *  \param info This structure must be initialized with the SDL version, and is
- *              then filled in with information about the given window.
+ * The caller must initialize the `info` structure's version by using
+ * `SDL_VERSION(&info.version)`, and then this function will fill in the rest
+ * of the structure with information about the given window.
  *
  *  \return SDL_TRUE if the function is implemented and the version member of
  *          the \c info struct is valid, SDL_FALSE otherwise.

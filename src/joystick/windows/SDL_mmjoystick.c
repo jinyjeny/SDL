@@ -222,8 +222,8 @@ SDL_JoystickID SDL_SYS_GetInstanceIdOfDeviceIndex(int device_index)
    This should fill the nbuttons and naxes fields of the joystick structure.
    It returns 0, or -1 if there is an error.
  */
-int
-SDL_SYS_JoystickOpen(SDL_Joystick * joystick, int device_index)
+static int
+WINMM_JoystickOpen(SDL_Joystick *joystick, int device_index)
 {
     int index, i;
     int caps_flags[MAX_AXES - 2] =
@@ -302,13 +302,47 @@ TranslatePOV(DWORD value)
     return (pos);
 }
 
+static int
+WINMM_JoystickRumble(SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)
+{
+    return SDL_Unsupported();
+}
+
+static int
+WINMM_JoystickRumbleTriggers(SDL_Joystick *joystick, Uint16 left_rumble, Uint16 right_rumble)
+{
+    return SDL_Unsupported();
+}
+
+static SDL_bool WINMM_JoystickHasLED(SDL_Joystick *joystick)
+{
+    return SDL_FALSE;
+}
+
+static int
+WINMM_JoystickSetLED(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue)
+{
+    return SDL_Unsupported();
+}
+
+static int
+WINMM_JoystickSendEffect(SDL_Joystick *joystick, const void *data, int size)
+{
+    return SDL_Unsupported();
+}
+
+static int WINMM_JoystickSetSensorsEnabled(SDL_Joystick *joystick, SDL_bool enabled)
+{
+    return SDL_Unsupported();
+}
+
 /* Function to update the state of a joystick - called as a device poll.
  * This function shouldn't update the joystick structure directly,
  * but instead should call SDL_PrivateJoystick*() to deliver events
  * and update joystick device state.
  */
-void
-SDL_SYS_JoystickUpdate(SDL_Joystick * joystick)
+static void
+WINMM_JoystickUpdate(SDL_Joystick *joystick)
 {
     MMRESULT result;
     int i;
@@ -365,8 +399,8 @@ SDL_SYS_JoystickUpdate(SDL_Joystick * joystick)
 }
 
 /* Function to close a joystick after use */
-void
-SDL_SYS_JoystickClose(SDL_Joystick * joystick)
+static void
+WINMM_JoystickClose(SDL_Joystick *joystick)
 {
     SDL_free(joystick->hwdata);
 }
@@ -446,6 +480,29 @@ SetMMerror(char *function, int code)
     }
     SDL_SetError("%s", errbuf);
 }
+
+SDL_JoystickDriver SDL_WINMM_JoystickDriver =
+{
+    WINMM_JoystickInit,
+    WINMM_NumJoysticks,
+    WINMM_JoystickDetect,
+    WINMM_JoystickGetDeviceName,
+    WINMM_JoystickGetDevicePlayerIndex,
+    WINMM_JoystickSetDevicePlayerIndex,
+    WINMM_JoystickGetDeviceGUID,
+    WINMM_JoystickGetDeviceInstanceID,
+    WINMM_JoystickOpen,
+    WINMM_JoystickRumble,
+    WINMM_JoystickRumbleTriggers,
+    WINMM_JoystickHasLED,
+    WINMM_JoystickSetLED,
+    WINMM_JoystickSendEffect,
+    WINMM_JoystickSetSensorsEnabled,
+    WINMM_JoystickUpdate,
+    WINMM_JoystickClose,
+    WINMM_JoystickQuit,
+    WINMM_JoystickGetGamepadMapping
+};
 
 #endif /* SDL_JOYSTICK_WINMM */
 

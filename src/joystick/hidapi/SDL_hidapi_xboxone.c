@@ -451,6 +451,12 @@ HIDAPI_DriverXboxOne_SetJoystickLED(SDL_HIDAPI_Device *device, SDL_Joystick *joy
 }
 
 static int
+HIDAPI_DriverXboxOne_SendJoystickEffect(SDL_HIDAPI_Device *device, SDL_Joystick *joystick, const void *data, int size)
+{
+    return SDL_Unsupported();
+}
+
+static int
 HIDAPI_DriverXboxOne_SetJoystickSensorsEnabled(SDL_HIDAPI_Device *device, SDL_Joystick *joystick, SDL_bool enabled)
 {
     return SDL_Unsupported();
@@ -488,14 +494,23 @@ HIDAPI_DriverXboxOne_HandleStatePacket(SDL_Joystick *joystick, SDL_DriverXboxOne
     }
 
     if (ctx->has_share_button) {
-        /* Version 1 of the firmware for Xbox One Series X */
-        if (ctx->last_state[18] != data[18]) {
-            SDL_PrivateJoystickButton(joystick, SDL_CONTROLLER_BUTTON_MISC1, (data[18] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
-        }
-
-        /* Version 2 of the firmware for Xbox One Series X */
-        if (ctx->last_state[22] != data[22]) {
-            SDL_PrivateJoystickButton(joystick, SDL_CONTROLLER_BUTTON_MISC1, (data[22] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
+        /* Xbox Series X firmware version 5.0, report is 36 bytes, share button is in byte 18
+         * Xbox Series X firmware version 5.1, report is 44 bytes, share button is in byte 18
+         * Xbox Series X firmware version 5.5, report is 48 bytes, share button is in byte 22
+         * Victrix Gambit Tournament Controller, report is 50 bytes, share button is in byte 32
+         */
+        if (size < 48) {
+            if (ctx->last_state[18] != data[18]) {
+                SDL_PrivateJoystickButton(joystick, SDL_CONTROLLER_BUTTON_MISC1, (data[18] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
+            }
+        } else if (size == 48) {
+            if (ctx->last_state[22] != data[22]) {
+                SDL_PrivateJoystickButton(joystick, SDL_CONTROLLER_BUTTON_MISC1, (data[22] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
+            }
+        } else if (size == 50) {
+            if (ctx->last_state[32] != data[32]) {
+                SDL_PrivateJoystickButton(joystick, SDL_CONTROLLER_BUTTON_MISC1, (data[32] & 0x01) ? SDL_PRESSED : SDL_RELEASED);
+            }
         }
     }
 
@@ -1081,6 +1096,7 @@ SDL_HIDAPI_DeviceDriver SDL_HIDAPI_DriverXboxOne =
     HIDAPI_DriverXboxOne_RumbleJoystickTriggers,
     HIDAPI_DriverXboxOne_HasJoystickLED,
     HIDAPI_DriverXboxOne_SetJoystickLED,
+    HIDAPI_DriverXboxOne_SendJoystickEffect,
     HIDAPI_DriverXboxOne_SetJoystickSensorsEnabled,
     HIDAPI_DriverXboxOne_CloseJoystick,
     HIDAPI_DriverXboxOne_FreeDevice,

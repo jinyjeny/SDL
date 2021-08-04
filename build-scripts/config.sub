@@ -2,7 +2,9 @@
 # Configuration validation subroutine script.
 #   Copyright 1992-2017 Free Software Foundation, Inc.
 
-timestamp='2017-04-02'
+# shellcheck disable=SC2006,SC2268 # see below for rationale
+
+timestamp='2021-07-03'
 
 # This file is free software; you can redistribute it and/or modify it
 # under the terms of the GNU General Public License as published by
@@ -50,6 +52,13 @@ timestamp='2017-04-02'
 #	CPU_TYPE-MANUFACTURER-KERNEL-OPERATING_SYSTEM
 # It is wrong to echo any other type of specification.
 
+# The "shellcheck disable" line above the timestamp inhibits complaints
+# about features and limitations of the classic Bourne shell that were
+# superseded or lifted in POSIX.  However, this script identifies a wide
+# variety of pre-POSIX systems that do not have POSIX shells at all, and
+# even some reasonably current systems (Solaris 10 as case-in-point) still
+# have a pre-POSIX /bin/sh.
+
 me=`echo "$0" | sed -e 's,.*/,,'`
 
 usage="\
@@ -67,7 +76,7 @@ Report bugs and patches to <config-patches@gnu.org>."
 version="\
 GNU config.sub ($timestamp)
 
-Copyright 1992-2017 Free Software Foundation, Inc.
+Copyright 1992-2021 Free Software Foundation, Inc.
 
 This is free software; see the source for copying conditions.  There is NO
 warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE."
@@ -1361,8 +1370,120 @@ case $basic_machine in
 		# Make sure to match an already-canonicalized machine name.
 		;;
 	*)
-		echo Invalid configuration \`$1\': machine \`$basic_machine\' not recognized 1>&2
-		exit 1
+		# Recognize the canonical CPU types that are allowed with any
+		# company name.
+		case $cpu in
+			1750a | 580 \
+			| a29k \
+			| aarch64 | aarch64_be \
+			| abacus \
+			| alpha | alphaev[4-8] | alphaev56 | alphaev6[78] \
+			| alpha64 | alpha64ev[4-8] | alpha64ev56 | alpha64ev6[78] \
+			| alphapca5[67] | alpha64pca5[67] \
+			| am33_2.0 \
+			| amdgcn \
+			| arc | arceb | arc32 | arc64 \
+			| arm | arm[lb]e | arme[lb] | armv* \
+			| avr | avr32 \
+			| asmjs \
+			| ba \
+			| be32 | be64 \
+			| bfin | bpf | bs2000 \
+			| c[123]* | c30 | [cjt]90 | c4x \
+			| c8051 | clipper | craynv | csky | cydra \
+			| d10v | d30v | dlx | dsp16xx \
+			| e2k | elxsi | epiphany \
+			| f30[01] | f700 | fido | fr30 | frv | ft32 | fx80 \
+			| h8300 | h8500 \
+			| hppa | hppa1.[01] | hppa2.0 | hppa2.0[nw] | hppa64 \
+			| hexagon \
+			| i370 | i*86 | i860 | i960 | ia16 | ia64 \
+			| ip2k | iq2000 \
+			| k1om \
+			| le32 | le64 \
+			| lm32 \
+			| loongarch32 | loongarch64 | loongarchx32 \
+			| m32c | m32r | m32rle \
+			| m5200 | m68000 | m680[012346]0 | m68360 | m683?2 | m68k \
+			| m6811 | m68hc11 | m6812 | m68hc12 | m68hcs12x \
+			| m88110 | m88k | maxq | mb | mcore | mep | metag \
+			| microblaze | microblazeel \
+			| mips | mipsbe | mipseb | mipsel | mipsle \
+			| mips16 \
+			| mips64 | mips64eb | mips64el \
+			| mips64octeon | mips64octeonel \
+			| mips64orion | mips64orionel \
+			| mips64r5900 | mips64r5900el \
+			| mips64vr | mips64vrel \
+			| mips64vr4100 | mips64vr4100el \
+			| mips64vr4300 | mips64vr4300el \
+			| mips64vr5000 | mips64vr5000el \
+			| mips64vr5900 | mips64vr5900el \
+			| mipsisa32 | mipsisa32el \
+			| mipsisa32r2 | mipsisa32r2el \
+			| mipsisa32r3 | mipsisa32r3el \
+			| mipsisa32r5 | mipsisa32r5el \
+			| mipsisa32r6 | mipsisa32r6el \
+			| mipsisa64 | mipsisa64el \
+			| mipsisa64r2 | mipsisa64r2el \
+			| mipsisa64r3 | mipsisa64r3el \
+			| mipsisa64r5 | mipsisa64r5el \
+			| mipsisa64r6 | mipsisa64r6el \
+			| mipsisa64sb1 | mipsisa64sb1el \
+			| mipsisa64sr71k | mipsisa64sr71kel \
+			| mipsr5900 | mipsr5900el \
+			| mipstx39 | mipstx39el \
+			| mmix \
+			| mn10200 | mn10300 \
+			| moxie \
+			| mt \
+			| msp430 \
+			| nds32 | nds32le | nds32be \
+			| nfp \
+			| nios | nios2 | nios2eb | nios2el \
+			| none | np1 | ns16k | ns32k | nvptx \
+			| open8 \
+			| or1k* \
+			| or32 \
+			| orion \
+			| picochip \
+			| pdp10 | pdp11 | pj | pjl | pn | power \
+			| powerpc | powerpc64 | powerpc64le | powerpcle | powerpcspe \
+			| pru \
+			| pyramid \
+			| riscv | riscv32 | riscv32be | riscv64 | riscv64be \
+			| rl78 | romp | rs6000 | rx \
+			| s390 | s390x \
+			| score \
+			| sh | shl \
+			| sh[1234] | sh[24]a | sh[24]ae[lb] | sh[23]e | she[lb] | sh[lb]e \
+			| sh[1234]e[lb] |  sh[12345][lb]e | sh[23]ele | sh64 | sh64le \
+			| sparc | sparc64 | sparc64b | sparc64v | sparc86x | sparclet \
+			| sparclite \
+			| sparcv8 | sparcv9 | sparcv9b | sparcv9v | sv1 | sx* \
+			| spu \
+			| tahoe \
+			| thumbv7* \
+			| tic30 | tic4x | tic54x | tic55x | tic6x | tic80 \
+			| tron \
+			| ubicom32 \
+			| v70 | v850 | v850e | v850e1 | v850es | v850e2 | v850e2v3 \
+			| vax \
+			| visium \
+			| w65 \
+			| wasm32 | wasm64 \
+			| we32k \
+			| x86 | x86_64 | xc16x | xgate | xps100 \
+			| xstormy16 | xtensa* \
+			| ymp \
+			| z8k | z80)
+				;;
+
+			*)
+				echo Invalid configuration \`"$1"\': machine \`"$cpu-$vendor"\' not recognized 1>&2
+				exit 1
+				;;
+		esac
 		;;
 esac
 
@@ -1382,12 +1503,36 @@ esac
 
 if [ x"$os" != x"" ]
 then
-case $os in
-	# First match some system type aliases
-	# that might get confused with valid system types.
-	# -solaris* is a basic system type, with this one exception.
-	-auroraux)
-		os=-auroraux
+
+# First recognize some ad-hoc caes, or perhaps split kernel-os, or else just
+# set os.
+case $basic_os in
+	gnu/linux*)
+		kernel=linux
+		os=`echo "$basic_os" | sed -e 's|gnu/linux|gnu|'`
+		;;
+	os2-emx)
+		kernel=os2
+		os=`echo "$basic_os" | sed -e 's|os2-emx|emx|'`
+		;;
+	nto-qnx*)
+		kernel=nto
+		os=`echo "$basic_os" | sed -e 's|nto-qnx|qnx|'`
+		;;
+	*-*)
+		# shellcheck disable=SC2162
+		IFS="-" read kernel os <<EOF
+$basic_os
+EOF
+		;;
+	# Default OS when just kernel was specified
+	nto*)
+		kernel=nto
+		os=`echo "$basic_os" | sed -e 's|nto|qnx|'`
+		;;
+	linux*)
+		kernel=linux
+		os=`echo "$basic_os" | sed -e 's|linux|gnu|'`
 		;;
 	-solaris1 | -solaris1.*)
 		os=`echo $os | sed -e 's|solaris1|sunos4|'`
@@ -1398,53 +1543,8 @@ case $os in
 	-svr4*)
 		os=-sysv4
 		;;
-	-unixware*)
-		os=-sysv4.2uw
-		;;
-	-gnu/linux*)
-		os=`echo $os | sed -e 's|gnu/linux|linux-gnu|'`
-		;;
-	# First accept the basic system types.
-	# The portable systems comes first.
-	# Each alternative MUST END IN A *, to match a version number.
-	# -sysv* is not here because it comes later, after sysvr4.
-	-gnu* | -bsd* | -mach* | -minix* | -genix* | -ultrix* | -irix* \
-	      | -*vms* | -sco* | -esix* | -isc* | -aix* | -cnk* | -sunos | -sunos[34]*\
-	      | -hpux* | -unos* | -osf* | -luna* | -dgux* | -auroraux* | -solaris* \
-	      | -sym* | -kopensolaris* | -plan9* \
-	      | -amigaos* | -amigados* | -msdos* | -newsos* | -unicos* | -aof* \
-	      | -aos* | -aros* | -cloudabi* | -sortix* \
-	      | -nindy* | -vxsim* | -vxworks* | -ebmon* | -hms* | -mvs* \
-	      | -clix* | -riscos* | -uniplus* | -iris* | -rtu* | -xenix* \
-	      | -hiux* | -386bsd* | -knetbsd* | -mirbsd* | -netbsd* \
-	      | -bitrig* | -openbsd* | -solidbsd* | -libertybsd* \
-	      | -ekkobsd* | -kfreebsd* | -freebsd* | -riscix* | -lynxos* \
-	      | -bosx* | -nextstep* | -cxux* | -aout* | -elf* | -oabi* \
-	      | -ptx* | -coff* | -ecoff* | -winnt* | -domain* | -vsta* \
-	      | -udi* | -eabi* | -lites* | -ieee* | -go32* | -aux* \
-	      | -chorusos* | -chorusrdb* | -cegcc* | -glidix* \
-	      | -cygwin* | -msys* | -pe* | -psos* | -moss* | -proelf* | -rtems* \
-	      | -midipix* | -mingw32* | -mingw64* | -linux-gnu* | -linux-android* \
-	      | -linux-newlib* | -linux-musl* | -linux-uclibc* \
-	      | -uxpv* | -beos* | -mpeix* | -udk* | -moxiebox* \
-	      | -interix* | -uwin* | -mks* | -rhapsody* | -darwin* | -opened* \
-	      | -openstep* | -oskit* | -conix* | -pw32* | -nonstopux* \
-	      | -storm-chaos* | -tops10* | -tenex* | -tops20* | -its* \
-	      | -os2* | -vos* | -palmos* | -uclinux* | -nucleus* \
-	      | -morphos* | -superux* | -rtmk* | -rtmk-nova* | -windiss* \
-	      | -powermax* | -dnix* | -nx6 | -nx7 | -sei* | -dragonfly* \
-	      | -skyos* | -haiku* | -rdos* | -toppers* | -drops* | -es* \
-	      | -onefs* | -tirtos* | -phoenix* | -fuchsia* | -redox*)
-	# Remember, each alternative MUST END IN *, to match a version number.
-		;;
-	-qnx*)
-		case $basic_machine in
-		    x86-* | i*86-*)
-			;;
-		    *)
-			os=-nto$os
-			;;
-		esac
+	solaris1 | solaris1.*)
+		os=`echo "$os" | sed -e 's|solaris1|sunos4|'`
 		;;
 	-nacl*)
 		os=-nacl
@@ -1470,8 +1570,8 @@ case $os in
 	-linux*)
 		os=`echo $os | sed -e 's|linux|linux-gnu|'`
 		;;
-	-sunos5*)
-		os=`echo $os | sed -e 's|sunos5|solaris2|'`
+	sco3.2.[4-9]*)
+		os=`echo "$os" | sed -e 's/sco3.2./sco3.2v/'`
 		;;
 	-sunos6*)
 		os=`echo $os | sed -e 's|sunos6|solaris3|'`
@@ -1546,8 +1646,9 @@ case $os in
 	-svr3)
 		os=-sysv3
 		;;
-	-sysvr4)
-		os=-sysv4
+	# Preserve the version number of sinix5.
+	sinix5.*)
+		os=`echo "$os" | sed -e 's|sinix|sysv|'`
 		;;
 	# This must come after -sysvr4.
 	-sysv*)

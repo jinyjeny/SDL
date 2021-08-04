@@ -122,8 +122,8 @@ extern SDLMAIN_DECLSPEC int SDL_main(int argc, char *argv[]);
 
 
 /**
- *  This is called by the real SDL main function to let the rest of the
- *  library know that initialization was done properly.
+ * Circumvent failure of SDL_Init() when not using SDL_main() as an entry
+ * point.
  *
  *  Calling this yourself without knowing what you're doing can cause
  *  crashes and hard to diagnose problems with your application.
@@ -133,7 +133,7 @@ extern DECLSPEC void SDLCALL SDL_SetMainReady(void);
 #ifdef __WIN32__
 
 /**
- *  This can be called to set the application class at startup
+ * This can be called to set the application class at startup
  */
 extern DECLSPEC int SDLCALL SDL_RegisterApp(char *name, Uint32 style, void *hInst);
 extern DECLSPEC void SDLCALL SDL_UnregisterApp(void);

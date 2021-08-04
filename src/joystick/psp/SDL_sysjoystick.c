@@ -177,6 +177,40 @@ int SDL_SYS_JoystickOpen(SDL_Joystick *joystick, int device_index)
     return 0;
 }
 
+static int
+PSP_JoystickRumble(SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)
+{
+    return SDL_Unsupported();
+}
+
+static int
+PSP_JoystickRumbleTriggers(SDL_Joystick *joystick, Uint16 left_rumble, Uint16 right_rumble)
+{
+    return SDL_Unsupported();
+}
+
+static SDL_bool PSP_JoystickHasLED(SDL_Joystick *joystick)
+{
+    return SDL_FALSE;
+}
+
+static int
+PSP_JoystickSetLED(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue)
+{
+    return SDL_Unsupported();
+}
+
+static int
+PSP_JoystickSendEffect(SDL_Joystick *joystick, const void *data, int size)
+{
+    return SDL_Unsupported();
+}
+
+static int PSP_JoystickSetSensorsEnabled(SDL_Joystick *joystick, SDL_bool enabled)
+{
+    return SDL_Unsupported();
+}
+
 /* Function to update the state of a joystick - called as a device poll.
  * This function shouldn't update the joystick structure directly,
  * but instead should call SDL_PrivateJoystick*() to deliver events
@@ -250,13 +284,26 @@ SDL_JoystickGUID SDL_SYS_JoystickGetDeviceGUID( int device_index )
 
 SDL_JoystickGUID SDL_SYS_JoystickGetGUID(SDL_Joystick * joystick)
 {
-    SDL_JoystickGUID guid;
-    /* the GUID is just the first 16 chars of the name for now */
-    const char *name = joystick->name;
-    SDL_zero( guid );
-    SDL_memcpy( &guid, name, SDL_min( sizeof(guid), SDL_strlen( name ) ) );
-    return guid;
-}
+    PSP_JoystickInit,
+    PSP_NumJoysticks,
+    PSP_JoystickDetect,
+    PSP_JoystickGetDeviceName,
+    PSP_JoystickGetDevicePlayerIndex,
+    PSP_JoystickSetDevicePlayerIndex,
+    PSP_JoystickGetDeviceGUID,
+    PSP_JoystickGetDeviceInstanceID,
+    PSP_JoystickOpen,
+    PSP_JoystickRumble,
+    PSP_JoystickRumbleTriggers,
+    PSP_JoystickHasLED,
+    PSP_JoystickSetLED,
+    PSP_JoystickSendEffect,
+    PSP_JoystickSetSensorsEnabled,
+    PSP_JoystickUpdate,
+    PSP_JoystickClose,
+    PSP_JoystickQuit,
+    PSP_JoystickGetGamepadMapping
+};
 
 #endif /* SDL_JOYSTICK_PSP */
 

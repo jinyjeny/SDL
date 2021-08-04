@@ -34,7 +34,10 @@
 #include "SDL_waylandvideo.h"
 #include "SDL_waylanddatamanager.h"
 
-#include "SDL_waylanddyn.h"
+/* FIXME: This is arbitrary, but we want this to be less than a frame because
+ * any longer can potentially spin an infinite loop of PumpEvents (!)
+ */
+#define PIPE_MS_TIMEOUT 10
 
 static ssize_t
 write_pipe(int fd, const void* buffer, size_t total_length, size_t *pos)
@@ -152,7 +155,7 @@ Wayland_convert_mime_type(const char *mime_type)
     size_t index = 0;
 
     for (index = 0; index < MIME_LIST_SIZE; ++index) {
-        if (strcmp(mime_conversion_list[index][0], mime_type) == 0) {
+        if (SDL_strcmp(mime_conversion_list[index][0], mime_type) == 0) {
             found = mime_conversion_list[index][1];
             break;
         }
@@ -169,7 +172,7 @@ mime_data_list_find(struct wl_list* list,
 
     SDL_MimeDataList *mime_list = NULL;
     wl_list_for_each(mime_list, list, link) { 
-        if (strcmp(mime_list->mime_type, mime_type) == 0) {
+        if (SDL_strcmp(mime_list->mime_type, mime_type) == 0) {
             found = mime_list;
             break;
         }
@@ -421,7 +424,7 @@ Wayland_data_device_set_selection(SDL_WaylandDataDevice *data_device,
 
             /* TODO - Improve system for multiple mime types to same data */
             for (index = 0; index < MIME_LIST_SIZE; ++index) {
-                if (strcmp(mime_conversion_list[index][1], mime_data->mime_type) == 0) {
+                if (SDL_strcmp(mime_conversion_list[index][1], mime_data->mime_type) == 0) {
                     wl_data_source_offer(source->source,
                                          mime_conversion_list[index][0]);
                }

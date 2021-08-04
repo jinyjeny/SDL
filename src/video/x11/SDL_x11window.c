@@ -737,20 +737,14 @@ X11_SetWindowTitle(_THIS, SDL_Window * window)
         return;
     }
 
-    status = X11_XStringListToTextProperty(&title_locale, 1, &titleprop);
-    SDL_free(title_locale);
-    if (status) {
-        X11_XSetTextProperty(display, data->xwindow, &titleprop, XA_WM_NAME);
-        X11_XFree(titleprop.value);
-    }
-#ifdef X_HAVE_UTF8_STRING
-    if (SDL_X11_HAVE_UTF8) {
-        status = X11_Xutf8TextListToTextProperty(display, (char **) &title, 1,
-                                            XUTF8StringStyle, &titleprop);
-        if (status == Success) {
-            X11_XSetTextProperty(display, data->xwindow, &titleprop,
-                                 _NET_WM_NAME);
-            X11_XFree(titleprop.value);
+    if (status != 1) {
+        char *x11_error = NULL;
+        char x11_error_locale[256];
+        if (X11_XGetErrorText(display, status, x11_error_locale, sizeof(x11_error_locale)) == Success)
+        {
+            x11_error = SDL_iconv_string("UTF-8", "", x11_error_locale, SDL_strlen(x11_error_locale)+1);
+            SDL_LogDebug(SDL_LOG_CATEGORY_VIDEO, "Error when setting X11 window title to %s: %s\n", title, x11_error);
+            SDL_free(x11_error);
         }
     }
 #endif
@@ -1710,6 +1704,52 @@ X11_AcceptDragAndDrop(SDL_Window * window, SDL_bool accept)
     } else {
         X11_XDeleteProperty(display, data->xwindow, XdndAware);
     }
+}
+
+int
+X11_FlashWindow(_THIS, SDL_Window * window, SDL_FlashOperation operation)
+{
+    SDL_WindowData *data = (SDL_WindowData *) window->driverdata;
+    Display *display = data->videodata->display;
+    XWMHints *wmhints;
+
+    wmhints = X11_XGetWMHints(display, data->xwindow);
+    if (!wmhints) {
+        return SDL_SetError("Couldn't get WM hints");
+    }
+
+    wmhints->flags &= ~XUrgencyHint;
+    data->flashing_window = SDL_FALSE;
+    data->flash_cancel_time = 0;
+
+    switch (operation) {
+    case SDL_FLASH_CANCEL:
+        /* Taken care of above */
+        break;
+    case SDL_FLASH_BRIEFLY:
+        if (!(window->flags & SDL_WINDOW_INPUT_FOCUS)) {
+            wmhints->flags |= XUrgencyHint;
+            data->flashing_window = SDL_TRUE;
+            /* On Ubuntu 21.04 this causes a dialog to pop up, so leave it up for a full second so users can see it */
+            data->flash_cancel_time = SDL_GetTicks() + 1000;
+            if (!data->flash_cancel_time) {
+                data->flash_cancel_time = 1;
+            }
+        }
+        break;
+    case SDL_FLASH_UNTIL_FOCUSED:
+        if (!(window->flags & SDL_WINDOW_INPUT_FOCUS)) {
+            wmhints->flags |= XUrgencyHint;
+            data->flashing_window = SDL_TRUE;
+        }
+        break;
+    default:
+        break;
+    }
+
+    X11_XSetWMHints(display, data->xwindow, wmhints);
+    X11_XFree(wmhints);
+    return 0;
 }
 
 #endif /* SDL_VIDEO_DRIVER_X11 */

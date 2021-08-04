@@ -83,23 +83,8 @@ typedef struct connector {
 typedef struct SDL_DisplayData
 {
     drmModeModeInfo mode;
-    drmModeModeInfo preferred_mode;
-    uint32_t atomic_flags;
-
-    plane *display_plane;
-    plane *cursor_plane;
-    crtc *crtc;
-    connector *connector;
-
-    /* Central atomic request list, used for the prop
-       changeset related to pageflip in SwapWindow. */ 
-    drmModeAtomicReq *atomic_req;
-
-    int kms_in_fence_fd;
-    int kms_out_fence_fd;
-
-    EGLSyncKHR kms_fence;
-    EGLSyncKHR gpu_fence;
+    drmModeModeInfo original_mode;
+    drmModeModeInfo fullscreen_mode;
 
 #if SDL_VIDEO_OPENGL_EGL
     EGLSurface old_egl_surface;

@@ -348,11 +348,34 @@ SDL_bool KMSDRM_Vulkan_CreateSurface(_THIS,
         }
     }
 
-    if (display_mode_props.parameters.visibleRegion.width == 0
-        || display_mode_props.parameters.visibleRegion.height == 0)
-    {
-        SDL_SetError("Vulkan can't find a proper display mode for the window size.");
-        goto clean;
+    if (mode_found &&
+        display_mode_props.parameters.visibleRegion.width > 0 &&
+        display_mode_props.parameters.visibleRegion.height > 0 ) {
+        /* Found a suitable mode among the predefined ones. Use that. */
+        display_mode = display_mode_props.displayMode;
+    } else {
+
+        /* Couldn't find a suitable mode among the predefined ones, so try to create our own.
+           This won't work for some video chips atm (like Pi's VideoCore) so these are limited
+           to supported resolutions. Don't try to use "closest" resolutions either, because
+           those are often bigger than the window size, thus causing out-of-bunds scanout. */
+        new_mode_parameters.visibleRegion.width = window->w;
+        new_mode_parameters.visibleRegion.height = window->h;
+        /* SDL (and DRM, if we look at drmModeModeInfo vrefresh) uses plain integer Hz for
+           display mode refresh rate, but Vulkan expects higher precision. */
+        new_mode_parameters.refreshRate = window->fullscreen_mode.refresh_rate * 1000;
+
+        SDL_zero(display_mode_create_info);
+        display_mode_create_info.sType = VK_STRUCTURE_TYPE_DISPLAY_MODE_CREATE_INFO_KHR;
+        display_mode_create_info.parameters = new_mode_parameters;
+        result = vkCreateDisplayModeKHR(gpu,
+                                        displays_props[display_index].display,
+                                        &display_mode_create_info,
+                                        NULL, &display_mode);
+        if (result != VK_SUCCESS) {
+            SDL_SetError("Vulkan couldn't find a predefined mode for that window size and couldn't create a suitable mode.");
+            goto clean;
+        }
     }
 
     /* We have the props of the display mode, but we need an actual display mode. */
@@ -372,11 +395,14 @@ SDL_bool KMSDRM_Vulkan_CreateSurface(_THIS,
     image_size.width = window->w;
     image_size.height = window->h;
     
+    SDL_zero(display_plane_surface_create_info);
     display_plane_surface_create_info.sType = VK_STRUCTURE_TYPE_DISPLAY_SURFACE_CREATE_INFO_KHR;
     display_plane_surface_create_info.displayMode = display_mode;
     /* For now, simply use the first plane. */
     display_plane_surface_create_info.planeIndex = 0;
     display_plane_surface_create_info.imageExtent = image_size;
+    display_plane_surface_create_info.transform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+    display_plane_surface_create_info.alphaMode = VK_DISPLAY_PLANE_ALPHA_OPAQUE_BIT_KHR;
     result = vkCreateDisplayPlaneSurfaceKHR(instance,
                                      &display_plane_surface_create_info,
                                      NULL,

@@ -59,6 +59,12 @@ struct joystick_hwdata
 };
 
 static SDL_HIDAPI_DeviceDriver *SDL_HIDAPI_drivers[] = {
+#ifdef SDL_JOYSTICK_HIDAPI_GAMECUBE
+    &SDL_HIDAPI_DriverGameCube,
+#endif
+#ifdef SDL_JOYSTICK_HIDAPI_LUNA
+    &SDL_HIDAPI_DriverLuna,
+#endif
 #ifdef SDL_JOYSTICK_HIDAPI_PS4
     &SDL_HIDAPI_DriverPS4,
 #endif
@@ -411,7 +417,7 @@ HIDAPI_DumpPacket(const char *prefix, Uint8 *data, int size)
 }
 
 static void HIDAPI_JoystickDetect(void);
-static void HIDAPI_JoystickClose(SDL_Joystick * joystick);
+static void HIDAPI_JoystickClose(SDL_Joystick *joystick);
 
 static SDL_bool
 HIDAPI_IsDeviceSupported(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
@@ -928,6 +934,40 @@ HIDAPI_IsEquivalentToDevice(Uint16 vendor_id, Uint16 product_id, SDL_HIDAPI_Devi
 }
 
 SDL_bool
+HIDAPI_IsDeviceTypePresent(SDL_GameControllerType type)
+{
+    SDL_HIDAPI_Device *device;
+    SDL_bool result = SDL_FALSE;
+
+    /* Make sure we're initialized, as this could be called from other drivers during startup */
+    if (HIDAPI_JoystickInit() < 0) {
+        return SDL_FALSE;
+    }
+
+    if (SDL_AtomicTryLock(&SDL_HIDAPI_spinlock)) {
+        HIDAPI_UpdateDeviceList();
+        SDL_AtomicUnlock(&SDL_HIDAPI_spinlock);
+    }
+
+    SDL_LockJoysticks();
+    device = SDL_HIDAPI_devices;
+    while (device) {
+        if (device->driver &&
+            SDL_GetJoystickGameControllerType(device->name, device->vendor_id, device->product_id, device->interface_number, device->interface_class, device->interface_subclass, device->interface_protocol) == type) {
+            result = SDL_TRUE;
+            break;
+        }
+        device = device->next;
+    }
+    SDL_UnlockJoysticks();
+
+#ifdef DEBUG_HIDAPI
+    SDL_Log("HIDAPI_IsDeviceTypePresent() returning %s for %d\n", result ? "true" : "false", type);
+#endif
+    return result;
+}
+
+SDL_bool
 HIDAPI_IsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, const char *name)
 {
     SDL_HIDAPI_Device *device;
@@ -969,6 +1009,7 @@ HIDAPI_IsDevicePresent(Uint16 vendor_id, Uint16 product_id, Uint16 version, cons
         if (device->driver &&
             HIDAPI_IsEquivalentToDevice(vendor_id, product_id, device)) {
             result = SDL_TRUE;
+            break;
         }
         device = device->next;
     }
@@ -1086,7 +1127,7 @@ HIDAPI_JoystickGetDeviceInstanceID(int device_index)
 }
 
 static int
-HIDAPI_JoystickOpen(SDL_Joystick * joystick, int device_index)
+HIDAPI_JoystickOpen(SDL_Joystick *joystick, int device_index)
 {
     SDL_JoystickID joystickID;
     SDL_HIDAPI_Device *device = HIDAPI_GetDeviceByIndex(device_index, &joystickID);
@@ -1112,7 +1153,7 @@ HIDAPI_JoystickOpen(SDL_Joystick * joystick, int device_index)
 }
 
 static int
-HIDAPI_JoystickRumble(SDL_Joystick * joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)
+HIDAPI_JoystickRumble(SDL_Joystick *joystick, Uint16 low_frequency_rumble, Uint16 high_frequency_rumble)
 {
     int result;
 
@@ -1129,7 +1170,7 @@ HIDAPI_JoystickRumble(SDL_Joystick * joystick, Uint16 low_frequency_rumble, Uint
 }
 
 static int
-HIDAPI_JoystickRumbleTriggers(SDL_Joystick * joystick, Uint16 left_rumble, Uint16 right_rumble)
+HIDAPI_JoystickRumbleTriggers(SDL_Joystick *joystick, Uint16 left_rumble, Uint16 right_rumble)
 {
     int result;
 
@@ -1146,7 +1187,7 @@ HIDAPI_JoystickRumbleTriggers(SDL_Joystick * joystick, Uint16 left_rumble, Uint1
 }
 
 static SDL_bool
-HIDAPI_JoystickHasLED(SDL_Joystick * joystick)
+HIDAPI_JoystickHasLED(SDL_Joystick *joystick)
 {
     SDL_bool result = SDL_FALSE;
 
@@ -1160,7 +1201,7 @@ HIDAPI_JoystickHasLED(SDL_Joystick * joystick)
 }
 
 static int
-HIDAPI_JoystickSetLED(SDL_Joystick * joystick, Uint8 red, Uint8 green, Uint8 blue)
+HIDAPI_JoystickSetLED(SDL_Joystick *joystick, Uint8 red, Uint8 green, Uint8 blue)
 {
     int result;
 
@@ -1177,7 +1218,24 @@ HIDAPI_JoystickSetLED(SDL_Joystick * joystick, Uint8 red, Uint8 green, Uint8 blu
 }
 
 static int
-HIDAPI_JoystickSetSensorsEnabled(SDL_Joystick * joystick, SDL_bool enabled)
+HIDAPI_JoystickSendEffect(SDL_Joystick *joystick, const void *data, int size)
+{
+    int result;
+
+    if (joystick->hwdata) {
+        SDL_HIDAPI_Device *device = joystick->hwdata->device;
+
+        result = device->driver->SendJoystickEffect(device, joystick, data, size);
+    } else {
+        SDL_SetError("SendEffect failed, device disconnected");
+        result = -1;
+    }
+
+    return result;
+}
+
+static int
+HIDAPI_JoystickSetSensorsEnabled(SDL_Joystick *joystick, SDL_bool enabled)
 {
     int result;
 
@@ -1194,13 +1252,13 @@ HIDAPI_JoystickSetSensorsEnabled(SDL_Joystick * joystick, SDL_bool enabled)
 }
 
 static void
-HIDAPI_JoystickUpdate(SDL_Joystick * joystick)
+HIDAPI_JoystickUpdate(SDL_Joystick *joystick)
 {
     /* This is handled in SDL_HIDAPI_UpdateDevices() */
 }
 
 static void
-HIDAPI_JoystickClose(SDL_Joystick * joystick)
+HIDAPI_JoystickClose(SDL_Joystick *joystick)
 {
     if (joystick->hwdata) {
         SDL_HIDAPI_Device *device = joystick->hwdata->device;
@@ -1280,6 +1338,7 @@ SDL_JoystickDriver SDL_HIDAPI_JoystickDriver =
     HIDAPI_JoystickRumbleTriggers,
     HIDAPI_JoystickHasLED,
     HIDAPI_JoystickSetLED,
+    HIDAPI_JoystickSendEffect,
     HIDAPI_JoystickSetSensorsEnabled,
     HIDAPI_JoystickUpdate,
     HIDAPI_JoystickClose,

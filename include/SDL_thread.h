@@ -192,30 +192,45 @@ extern DECLSPEC SDL_Thread *SDLCALL
 SDL_CreateThread(SDL_ThreadFunction fn, const char *name, void *data);
 
 /**
- *  Create a thread.
+ * Create a new thread with a specific stack size.
  *
- *   Thread naming is a little complicated: Most systems have very small
- *    limits for the string length (Haiku has 32 bytes, Linux currently has 16,
- *    Visual C++ 6.0 has nine!), and possibly other arbitrary rules. You'll
- *    have to see what happens with your system's debugger. The name should be
- *    UTF-8 (but using the naming limits of C identifiers is a better bet).
- *   There are no requirements for thread naming conventions, so long as the
- *    string is null-terminated UTF-8, but these guidelines are helpful in
- *    choosing a name:
+ * SDL makes an attempt to report `name` to the system, so that debuggers can
+ * display it. Not all platforms support this.
  *
- *    http://stackoverflow.com/questions/149932/naming-conventions-for-threads
+ * Thread naming is a little complicated: Most systems have very small limits
+ * for the string length (Haiku has 32 bytes, Linux currently has 16, Visual
+ * C++ 6.0 has _nine_!), and possibly other arbitrary rules. You'll have to
+ * see what happens with your system's debugger. The name should be UTF-8 (but
+ * using the naming limits of C identifiers is a better bet). There are no
+ * requirements for thread naming conventions, so long as the string is
+ * null-terminated UTF-8, but these guidelines are helpful in choosing a name:
  *
- *   If a system imposes requirements, SDL will try to munge the string for
- *    it (truncate, etc), but the original string contents will be available
- *    from SDL_GetThreadName().
+ * https://stackoverflow.com/questions/149932/naming-conventions-for-threads
  *
- *   The size (in bytes) of the new stack can be specified. Zero means "use
- *    the system default" which might be wildly different between platforms
- *    (x86 Linux generally defaults to eight megabytes, an embedded device
- *    might be a few kilobytes instead).
+ * If a system imposes requirements, SDL will try to munge the string for it
+ * (truncate, etc), but the original string contents will be available from
+ * SDL_GetThreadName().
  *
- *   In SDL 2.1, stacksize will be folded into the original SDL_CreateThread
- *    function.
+ * The size (in bytes) of the new stack can be specified. Zero means "use the
+ * system default" which might be wildly different between platforms. x86
+ * Linux generally defaults to eight megabytes, an embedded device might be a
+ * few kilobytes instead. You generally need to specify a stack that is a
+ * multiple of the system's page size (in many cases, this is 4 kilobytes, but
+ * check your system documentation).
+ *
+ * In SDL 2.1, stack size will be folded into the original SDL_CreateThread
+ * function, but for backwards compatibility, this is currently a separate
+ * function.
+ *
+ * \param fn the SDL_ThreadFunction function to call in the new thread
+ * \param name the name of the thread
+ * \param stacksize the size, in bytes, to allocate for the new thread stack.
+ * \param data a pointer that is passed to `fn`
+ * \returns an opaque pointer to the new thread object on success, NULL if the
+ *          new thread could not be created; call SDL_GetError() for more
+ *          information.
+ *
+ * \sa SDL_WaitThread
  */
 extern DECLSPEC SDL_Thread *SDLCALL
 SDL_CreateThreadWithStackSize(SDL_ThreadFunction fn, const char *name, const size_t stacksize, void *data);
@@ -244,7 +259,15 @@ extern DECLSPEC SDL_threadID SDLCALL SDL_ThreadID(void);
 extern DECLSPEC SDL_threadID SDLCALL SDL_GetThreadID(SDL_Thread * thread);
 
 /**
- *  Set the priority for the current thread
+ * Set the priority for the current thread.
+ *
+ * Note that some platforms will not let you alter the priority (or at least,
+ * promote the thread to a higher priority) at all, and some require you to be
+ * an administrator account. Be prepared for this to fail.
+ *
+ * \param priority the SDL_ThreadPriority to set
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
  */
 extern DECLSPEC int SDLCALL SDL_SetThreadPriority(SDL_ThreadPriority priority);
 
@@ -297,34 +320,17 @@ extern DECLSPEC void SDLCALL SDL_WaitThread(SDL_Thread * thread, int *status);
 extern DECLSPEC void SDLCALL SDL_DetachThread(SDL_Thread * thread);
 
 /**
- *  \brief Create an identifier that is globally visible to all threads but refers to data that is thread-specific.
+ * Create a piece of thread-local storage.
  *
- *  \return The newly created thread local storage identifier, or 0 on error
+ * This creates an identifier that is globally visible to all threads but
+ * refers to data that is thread-specific.
  *
- *  \code
- *  static SDL_SpinLock tls_lock;
- *  static SDL_TLSID thread_local_storage;
- * 
- *  void SetMyThreadData(void *value)
- *  {
- *      if (!thread_local_storage) {
- *          SDL_AtomicLock(&tls_lock);
- *          if (!thread_local_storage) {
- *              thread_local_storage = SDL_TLSCreate();
- *          }
- *          SDL_AtomicUnlock(&tls_lock);
- *      }
- *      SDL_TLSSet(thread_local_storage, value, 0);
- *  }
- *  
- *  void *GetMyThreadData(void)
- *  {
- *      return SDL_TLSGet(thread_local_storage);
- *  }
- *  \endcode
+ * \returns the newly created thread local storage identifier or 0 on error.
  *
- *  \sa SDL_TLSGet()
- *  \sa SDL_TLSSet()
+ * \since This function is available since SDL 2.0.0.
+ *
+ * \sa SDL_TLSGet
+ * \sa SDL_TLSSet
  */
 extern DECLSPEC SDL_TLSID SDLCALL SDL_TLSCreate(void);
 
@@ -354,6 +360,10 @@ extern DECLSPEC void * SDLCALL SDL_TLSGet(SDL_TLSID id);
  */
 extern DECLSPEC int SDLCALL SDL_TLSSet(SDL_TLSID id, const void *value, void (SDLCALL *destructor)(void*));
 
+/**
+ * Cleanup all TLS data for this thread.
+ */
+extern DECLSPEC void SDLCALL SDL_TLSCleanup(void);
 
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus

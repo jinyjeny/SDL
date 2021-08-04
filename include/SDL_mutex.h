@@ -66,13 +66,28 @@ extern DECLSPEC SDL_mutex *SDLCALL SDL_CreateMutex(void);
 /**
  *  Lock the mutex.
  *
- *  \return 0, or -1 on error.
+ * It is legal for the owning thread to lock an already-locked mutex. It must
+ * unlock it the same number of times before it is actually made available for
+ * other threads in the system (this is known as a "recursive mutex").
+ *
+ * \param mutex the mutex to lock
+ * \return 0, or -1 on error.
  */
 #define SDL_mutexP(m)   SDL_LockMutex(m)
 extern DECLSPEC int SDLCALL SDL_LockMutex(SDL_mutex * mutex);
 
 /**
- *  Try to lock the mutex
+ * Try to lock a mutex without blocking.
+ *
+ * This works just like SDL_LockMutex(), but if the mutex is not available,
+ * this function returns `SDL_MUTEX_TIMEOUT` immediately.
+ *
+ * This technique is useful if you need exclusive access to a resource but
+ * don't want to wait for it, and will return to it to try again later.
+ *
+ * \param mutex the mutex to try to lock
+ * \returns 0, `SDL_MUTEX_TIMEDOUT`, or -1 on error; call SDL_GetError() for
+ *          more information.
  *
  *  \return 0, SDL_MUTEX_TIMEDOUT, or -1 on error
  */
@@ -81,7 +96,9 @@ extern DECLSPEC int SDLCALL SDL_TryLockMutex(SDL_mutex * mutex);
 /**
  *  Unlock the mutex.
  *
- *  \return 0, or -1 on error.
+ * It is legal for the owning thread to lock an already-locked mutex. It must
+ * unlock it the same number of times before it is actually made available for
+ * other threads in the system (this is known as a "recursive mutex").
  *
  *  \warning It is an error to unlock a mutex that has not been locked by
  *           the current thread, and doing so results in undefined behavior.
@@ -132,7 +149,12 @@ extern DECLSPEC int SDLCALL SDL_SemWait(SDL_sem * sem);
 extern DECLSPEC int SDLCALL SDL_SemTryWait(SDL_sem * sem);
 
 /**
- *  Variant of SDL_SemWait() with a timeout in milliseconds.
+ * Wait until a semaphore has a positive value and then decrements it.
+ *
+ * This function suspends the calling thread until either the semaphore
+ * pointed to by `sem` has a positive value, the call is interrupted by a
+ * signal or error, or the specified time has elapsed. If the call is
+ * successful it will atomically decrement the semaphore value.
  *
  *  \return 0 if the wait succeeds, ::SDL_MUTEX_TIMEDOUT if the wait does not
  *          succeed in the allotted time, and -1 on error.
@@ -218,7 +240,10 @@ extern DECLSPEC int SDLCALL SDL_CondBroadcast(SDL_cond * cond);
 /**
  *  Wait on the condition variable, unlocking the provided mutex.
  *
- *  \warning The mutex must be locked before entering this function!
+ * This function unlocks the specified `mutex` and waits for another thread to
+ * call SDL_CondSignal() or SDL_CondBroadcast() on the condition variable
+ * `cond`. Once the condition variable is signaled, the mutex is re-locked and
+ * the function returns.
  *
  *  The mutex is re-locked once the condition variable is signaled.
  *
@@ -227,9 +252,23 @@ extern DECLSPEC int SDLCALL SDL_CondBroadcast(SDL_cond * cond);
 extern DECLSPEC int SDLCALL SDL_CondWait(SDL_cond * cond, SDL_mutex * mutex);
 
 /**
- *  Waits for at most \c ms milliseconds, and returns 0 if the condition
- *  variable is signaled, ::SDL_MUTEX_TIMEDOUT if the condition is not
- *  signaled in the allotted time, and -1 on error.
+ * Wait until a condition variable is signaled or a certain time has passed.
+ *
+ * This function unlocks the specified `mutex` and waits for another thread to
+ * call SDL_CondSignal() or SDL_CondBroadcast() on the condition variable
+ * `cond`, or for the specified time to elapse. Once the condition variable is
+ * signaled or the time elapsed, the mutex is re-locked and the function
+ * returns.
+ *
+ * The mutex must be locked before calling this function.
+ *
+ * \param cond the condition variable to wait on
+ * \param mutex the mutex used to coordinate thread access
+ * \param ms the maximum time to wait, in milliseconds, or `SDL_MUTEX_MAXWAIT`
+ *           to wait indefinitely
+ * \returns 0 if the condition variable is signaled, `SDL_MUTEX_TIMEDOUT` if
+ *          the condition is not signaled in the allotted time, or a negative
+ *          error code on failure; call SDL_GetError() for more information.
  *
  *  \warning On some platforms this function is implemented by looping with a
  *           delay of 1 ms, and so should be avoided if possible.

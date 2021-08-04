@@ -28,10 +28,8 @@
 #include "SDL_waylandopengles.h"
 #include "SDL_waylandwindow.h"
 #include "SDL_waylandevents_c.h"
-#include "SDL_waylanddyn.h"
 
 #include "xdg-shell-client-protocol.h"
-#include "xdg-shell-unstable-v6-client-protocol.h"
 
 /* EGL implementation of SDL OpenGL ES support */
 
@@ -39,12 +37,12 @@ int
 Wayland_GLES_LoadLibrary(_THIS, const char *path) {
     int ret;
     SDL_VideoData *data = (SDL_VideoData *) _this->driverdata;
-    
+
     ret = SDL_EGL_LoadLibrary(_this, path, (NativeDisplayType) data->display, 0);
 
     Wayland_PumpEvents(_this);
     WAYLAND_wl_display_flush(data->display);
-    
+
     return ret;
 }
 
@@ -55,6 +53,30 @@ Wayland_GLES_CreateContext(_THIS, SDL_Window * window)
     SDL_GLContext context;
     context = SDL_EGL_CreateContext(_this, ((SDL_WindowData *) window->driverdata)->egl_surface);
     WAYLAND_wl_display_flush( ((SDL_VideoData*)_this->driverdata)->display );
+
+    return context;
+}
+
+/* Wayland wants to tell you when to provide new frames, and if you have a non-zero
+   swap interval, Mesa will block until a callback tells it to do so. On some
+   compositors, they might decide that a minimized window _never_ gets a callback,
+   which causes apps to hang during swapping forever. So we always set the official
+   eglSwapInterval to zero to avoid blocking inside EGL, and manage this ourselves.
+   If a swap blocks for too long waiting on a callback, we just go on, under the
+   assumption the frame will be wasted, but this is better than freezing the app.
+   I frown upon platforms that dictate this sort of control inversion (the callback
+   is intended for _rendering_, not stalling until vsync), but we can work around
+   this for now.  --ryan. */
+/* Addendum: several recent APIs demand this sort of control inversion: Emscripten,
+   libretro, Wayland, probably others...it feels like we're eventually going to have
+   to give in with a future SDL API revision, since we can bend the other APIs to
+   this style, but this style is much harder to bend the other way.  :/ */
+int
+Wayland_GLES_SetSwapInterval(_THIS, int interval)
+{
+    if (!_this->egl_data) {
+        return SDL_SetError("EGL not initialized");
+    }
     
     return context;
 }
@@ -68,9 +90,6 @@ Wayland_GLES_SwapWindow(_THIS, SDL_Window *window)
         return -1;
     }
 
-    // Wayland-EGL forbids drawing calls in-between SwapBuffers and wl_egl_window_resize
-    Wayland_HandlePendingResize(window);
-
     WAYLAND_wl_display_flush( data->waylandData->display );
 
     return 0;
@@ -80,14 +99,14 @@ int
 Wayland_GLES_MakeCurrent(_THIS, SDL_Window * window, SDL_GLContext context)
 {
     int ret;
-    
+
     if (window && context) {
         ret = SDL_EGL_MakeCurrent(_this, ((SDL_WindowData *) window->driverdata)->egl_surface, context);
     }
     else {
         ret = SDL_EGL_MakeCurrent(_this, NULL, NULL);
     }
-    
+
     WAYLAND_wl_display_flush( ((SDL_VideoData*)_this->driverdata)->display );
     
     return ret;
@@ -110,7 +129,7 @@ Wayland_GLES_GetDrawableSize(_THIS, SDL_Window * window, int * w, int * h)
     }
 }
 
-void 
+void
 Wayland_GLES_DeleteContext(_THIS, SDL_GLContext context)
 {
     SDL_EGL_DeleteContext(_this, context);

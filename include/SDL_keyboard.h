@@ -60,7 +60,15 @@ typedef struct SDL_Keysym
 extern DECLSPEC SDL_Window * SDLCALL SDL_GetKeyboardFocus(void);
 
 /**
- *  \brief Get a snapshot of the current state of the keyboard.
+ * Get a snapshot of the current state of the keyboard.
+ *
+ * The pointer returned is a pointer to an internal SDL array. It will be
+ * valid for the whole lifetime of the application and should not be freed by
+ * the caller.
+ *
+ * A array element with a value of 1 means that the key is pressed and a value
+ * of 0 means that it is not. Indexes into this array are obtained by using
+ * SDL_Scancode values.
  *
  *  \param numkeys if non-NULL, receives the length of the returned array.
  *
@@ -89,8 +97,10 @@ extern DECLSPEC SDL_Keymod SDLCALL SDL_GetModState(void);
 extern DECLSPEC void SDLCALL SDL_SetModState(SDL_Keymod modstate);
 
 /**
- *  \brief Get the key code corresponding to the given scancode according
- *         to the current keyboard layout.
+ * Get the key code corresponding to the given scancode according to the
+ * current keyboard layout.
+ *
+ * See SDL_Keycode for details.
  *
  *  See ::SDL_Keycode for details.
  *
@@ -99,8 +109,8 @@ extern DECLSPEC void SDLCALL SDL_SetModState(SDL_Keymod modstate);
 extern DECLSPEC SDL_Keycode SDLCALL SDL_GetKeyFromScancode(SDL_Scancode scancode);
 
 /**
- *  \brief Get the scancode corresponding to the given key code according to the
- *         current keyboard layout.
+ * Get the scancode corresponding to the given key code according to the
+ * current keyboard layout.
  *
  *  See ::SDL_Scancode for details.
  *
@@ -153,9 +163,15 @@ extern DECLSPEC SDL_Keycode SDLCALL SDL_GetKeyFromName(const char *name);
  *  \brief Start accepting Unicode text input events.
  *         This function will show the on-screen keyboard if supported.
  *
- *  \sa SDL_StopTextInput()
- *  \sa SDL_SetTextInputRect()
- *  \sa SDL_HasScreenKeyboardSupport()
+ * This function will start accepting Unicode text input events in the focused
+ * SDL window, and start emitting SDL_TextInputEvent (SDL_TEXTINPUT) and
+ * SDL_TextEditingEvent (SDL_TEXTEDITING) events. Please use this function in
+ * pair with SDL_StopTextInput().
+ *
+ * On some platforms using this function activates the screen keyboard.
+ *
+ * \sa SDL_SetTextInputRect
+ * \sa SDL_StopTextInput
  */
 extern DECLSPEC void SDLCALL SDL_StartTextInput(void);
 

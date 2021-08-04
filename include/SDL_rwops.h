@@ -182,7 +182,25 @@ extern DECLSPEC Sint64 SDLCALL SDL_RWseek(SDL_RWops *context,
                                           Sint64 offset, int whence);
 
 /**
- *  Return the current offset in the data stream, or -1 on error.
+ * Determine the current read/write offset in an SDL_RWops data stream.
+ *
+ * SDL_RWtell is actually a wrapper function that calls the SDL_RWops's `seek`
+ * method, with an offset of 0 bytes from `RW_SEEK_CUR`, to simplify
+ * application development.
+ *
+ * \param context a SDL_RWops data stream object from which to get the current
+ *                offset
+ * \returns the current offset in the stream, or -1 if the information can not
+ *          be determined.
+ *
+ * \sa SDL_RWclose
+ * \sa SDL_RWFromConstMem
+ * \sa SDL_RWFromFile
+ * \sa SDL_RWFromFP
+ * \sa SDL_RWFromMem
+ * \sa SDL_RWread
+ * \sa SDL_RWseek
+ * \sa SDL_RWwrite
  */
 extern DECLSPEC Sint64 SDLCALL SDL_RWtell(SDL_RWops *context);
 
@@ -196,8 +214,22 @@ extern DECLSPEC size_t SDLCALL SDL_RWread(SDL_RWops *context,
                                           void *ptr, size_t size, size_t maxnum);
 
 /**
- *  Write exactly \c num objects each of size \c size from the area
- *  pointed at by \c ptr to data stream.
+ * Write to an SDL_RWops data stream.
+ *
+ * This function writes exactly `num` objects each of size `size` from the
+ * area pointed at by `ptr` to the stream. If this fails for any reason, it'll
+ * return less than `num` to demonstrate how far the write progressed. On
+ * success, it returns `num`.
+ *
+ * SDL_RWwrite is actually a function wrapper that calls the SDL_RWops's
+ * `write` method appropriately, to simplify application development.
+ *
+ * \param context a pointer to an SDL_RWops structure
+ * \param ptr a pointer to a buffer containing data to write
+ * \param size the size of an object to write, in bytes
+ * \param num the number of objects to write
+ * \returns the number of objects written, which will be less than **num** on
+ *          error; call SDL_GetError() for more information.
  *
  *  \return the number of objects written, or 0 at error or end of file.
  */
@@ -207,7 +239,28 @@ extern DECLSPEC size_t SDLCALL SDL_RWwrite(SDL_RWops *context,
 /**
  *  Close and free an allocated SDL_RWops structure.
  *
- *  \return 0 if successful or -1 on write error when flushing data.
+ * SDL_RWclose() closes and cleans up the SDL_RWops stream. It releases any
+ * resources used by the stream and frees the SDL_RWops itself with
+ * SDL_FreeRW(). This returns 0 on success, or -1 if the stream failed to
+ * flush to its output (e.g. to disk).
+ *
+ * Note that if this fails to flush the stream to disk, this function reports
+ * an error, but the SDL_RWops is still invalid once this function returns.
+ *
+ * SDL_RWclose() is actually a macro that calls the SDL_RWops's `close` method
+ * appropriately, to simplify application development.
+ *
+ * \param context SDL_RWops structure to close
+ * \returns 0 on success or a negative error code on failure; call
+ *          SDL_GetError() for more information.
+ *
+ * \sa SDL_RWFromConstMem
+ * \sa SDL_RWFromFile
+ * \sa SDL_RWFromFP
+ * \sa SDL_RWFromMem
+ * \sa SDL_RWread
+ * \sa SDL_RWseek
+ * \sa SDL_RWwrite
  */
 extern DECLSPEC int SDLCALL SDL_RWclose(SDL_RWops *context);
 

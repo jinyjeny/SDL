@@ -602,6 +602,17 @@ SDL_RendererEventWatch(void *userdata, SDL_Event *event)
                     SDL_SetRenderTarget(renderer, NULL);
                 }
 
+                /* Update the DPI scale if the window has been resized. */
+                if (window && renderer->GetOutputSize) {
+                    int window_w, window_h;
+                    int output_w, output_h;
+                    if (renderer->GetOutputSize(renderer, &output_w, &output_h) == 0) {
+                        SDL_GetWindowSize(renderer->window, &window_w, &window_h);
+                        renderer->dpi_scale.x = (float)window_w / output_w;
+                        renderer->dpi_scale.y = (float)window_h / output_h;
+                    }
+                }
+
                 if (renderer->logical_w) {
                     UpdateLogicalSize(renderer);
                 } else {
@@ -2510,7 +2521,9 @@ RenderDrawLinesWithRects(SDL_Renderer * renderer,
         }
     }
 
-    retval += QueueCmdFillRects(renderer, frects, nrects);
+    if (nrects) {
+        retval += QueueCmdFillRects(renderer, frects, nrects);
+    }
 
     SDL_small_free(frects, isstack);
 
@@ -2565,7 +2578,9 @@ RenderDrawLinesWithRectsF(SDL_Renderer * renderer,
         }
     }
 
-    retval += QueueCmdFillRects(renderer, frects, nrects);
+    if (nrects) {
+        retval += QueueCmdFillRects(renderer, frects, nrects);
+    }
 
     SDL_small_free(frects, isstack);
 

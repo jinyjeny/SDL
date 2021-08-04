@@ -495,13 +495,25 @@ SDL_EGL_LoadLibrary(_THIS, const char *egl_path, NativeDisplayType native_displa
     _this->egl_data->egl_display = EGL_NO_DISPLAY;
 #if !defined(__WINRT__)
     if (platform) {
-        if (egl_version_major == 1 && egl_version_minor == 5) {
-            _this->egl_data->egl_display = _this->egl_data->eglGetPlatformDisplay(platform, (void *)(size_t)native_display, NULL);
+        /* EGL 1.5 allows querying for client version with EGL_NO_DISPLAY
+         * --
+         * Khronos doc: "EGL_BAD_DISPLAY is generated if display is not an EGL display connection, unless display is EGL_NO_DISPLAY and name is EGL_EXTENSIONS."
+         * Therefore SDL_EGL_GetVersion() shouldn't work with uninitialized display.
+         * - it actually doesn't work on Android that has 1.5 egl client
+         * - it works on desktop X11 (using SDL_VIDEO_X11_FORCE_EGL=1) */
+        SDL_EGL_GetVersion(_this);
+
+        if (_this->egl_data->egl_version_major == 1 && _this->egl_data->egl_version_minor == 5) {
+            LOAD_FUNC(eglGetPlatformDisplay);
+        }
+
+        if (_this->egl_data->eglGetPlatformDisplay) {
+            _this->egl_data->egl_display = _this->egl_data->eglGetPlatformDisplay(platform, (void *)(uintptr_t)native_display, NULL);
         } else {
             if (SDL_EGL_HasExtension(_this, SDL_EGL_CLIENT_EXTENSION, "EGL_EXT_platform_base")) {
                 _this->egl_data->eglGetPlatformDisplayEXT = SDL_EGL_GetProcAddress(_this, "eglGetPlatformDisplayEXT");
                 if (_this->egl_data->eglGetPlatformDisplayEXT) {
-                    _this->egl_data->egl_display = _this->egl_data->eglGetPlatformDisplayEXT(platform, (void *)(size_t)native_display, NULL);
+                    _this->egl_data->egl_display = _this->egl_data->eglGetPlatformDisplayEXT(platform, (void *)(uintptr_t)native_display, NULL);
                 }
             }
         }

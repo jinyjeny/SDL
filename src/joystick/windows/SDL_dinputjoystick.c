@@ -34,7 +34,7 @@
 #define DIDFT_OPTIONAL      0x80000000
 #endif
 
-#define INPUT_QSIZE 32      /* Buffer up to 32 input messages */
+#define INPUT_QSIZE 128      /* Buffer up to 128 input messages */
 #define JOY_AXIS_THRESHOLD  (((SDL_JOYSTICK_AXIS_MAX)-(SDL_JOYSTICK_AXIS_MIN))/100)   /* 1% motion */
 
 #define CONVERT_MAGNITUDE(x)    (((x)*10000) / 0x7FFF)
@@ -260,10 +260,10 @@ WIN_IsXInputDevice(const WCHAR *name, const GUID* pGuidProductFromDirectInput)
         return SDL_FALSE;
     }
 
-    if (SDL_wcsstr(name, L" XINPUT ") != NULL) {
-        /* This is a duplicate interface for a controller that will show up with XInput,
-           e.g. Xbox One Elite Series 2 in Bluetooth mode.
-         */
+    type = SDL_GetJoystickGameControllerType("", vendor_id, product_id, -1, 0, 0, 0);
+    if (type == SDL_CONTROLLER_TYPE_XBOX360 ||
+        type == SDL_CONTROLLER_TYPE_XBOXONE ||
+        (vendor_id == USB_VENDOR_VALVE && product_id == USB_PRODUCT_STEAM_VIRTUAL_GAMEPAD)) {
         return SDL_TRUE;
     }
 
@@ -530,7 +530,7 @@ SDL_DINPUT_JoystickInit(void)
 
 /* helper function for direct input, gets called for each connected joystick */
 static BOOL CALLBACK
-EnumJoysticksCallback(const DIDEVICEINSTANCE * pdidInstance, VOID * pContext)
+EnumJoystickDetectCallback(LPCDIDEVICEINSTANCE pDeviceInstance, LPVOID pContext)
 {
     JoyStick_DeviceData *pNewJoystick;
     JoyStick_DeviceData *pPrevJoystick = NULL;
@@ -689,57 +689,55 @@ EnumJoysticksCallback(const DIDEVICEINSTANCE * pdidInstance, VOID * pContext)
 void
 SDL_DINPUT_JoystickDetect(JoyStick_DeviceData **pContext)
 {
-    IDirectInput8_EnumDevices(dinput, DI8DEVCLASS_GAMECTRL, EnumJoysticksCallback, pContext, DIEDFL_ATTACHEDONLY);
-
-    if (SDL_RawDevList) {
-        SDL_free(SDL_RawDevList);  /* in case we used this in DirectInput detection */
-        SDL_RawDevList = NULL;
-    }
-    SDL_RawDevListCount = 0;
+    IDirectInput8_EnumDevices(dinput, DI8DEVCLASS_GAMECTRL, EnumJoystickDetectCallback, pContext, DIEDFL_ATTACHEDONLY);
 }
 
+/* helper function for direct input, gets called for each connected joystick */
 typedef struct
 {
     Uint16 vendor;
     Uint16 product;
-    Uint16 version;
     SDL_bool present;
-} EnumJoystickPresentData;
+} Joystick_PresentData;
 
 static BOOL CALLBACK
-EnumJoystickPresentCallback(const DIDEVICEINSTANCE * pdidInstance, VOID * pContext)
+EnumJoystickPresentCallback(LPCDIDEVICEINSTANCE pDeviceInstance, LPVOID pContext)
 {
-    EnumJoystickPresentData *data = (EnumJoystickPresentData *)pContext;
+#define CHECK(exp) { if(!(exp)) goto err; }
+    Joystick_PresentData *pData = (Joystick_PresentData *)pContext;
     Uint16 vendor = 0;
     Uint16 product = 0;
-    Uint16 version = 0;
+    LPDIRECTINPUTDEVICE8 device = NULL;
 
-    if (SDL_memcmp(&pdidInstance->guidProduct.Data4[2], "PIDVID", 6) == 0) {
-        vendor = (Uint16)LOWORD(pdidInstance->guidProduct.Data1);
-        product = (Uint16)HIWORD(pdidInstance->guidProduct.Data1);
-        if (data->vendor == vendor && data->product == product && data->version == version) {
-            data->present = SDL_TRUE;
-            return DIENUM_STOP;
-        }
+    /* We are only supporting HID devices. */
+    CHECK((pDeviceInstance->dwDevType & DIDEVTYPE_HID) != 0);
+
+    CHECK(SUCCEEDED(IDirectInput8_CreateDevice(dinput, &pDeviceInstance->guidInstance, &device, NULL)));
+    CHECK(QueryDeviceInfo(device, &vendor, &product));
+
+    if (vendor == pData->vendor && product == pData->product) {
+        pData->present = SDL_TRUE;
+        return DIENUM_STOP; /* get next device, please */
     }
-    return DIENUM_CONTINUE;
+
+err:
+    if (device) {
+        IDirectInputDevice8_Release(device);
+    }
+
+    return DIENUM_CONTINUE; /* get next device, please */
+#undef CHECK
 }
 
 SDL_bool
-SDL_DINPUT_JoystickPresent(Uint16 vendor, Uint16 product, Uint16 version)
+SDL_DINPUT_JoystickPresent(Uint16 vendor_id, Uint16 product_id, Uint16 version_number)
 {
-    EnumJoystickPresentData data;
+    Joystick_PresentData data;
 
-    if (dinput == NULL) {
-        return SDL_FALSE;
-    }
-
-    data.vendor = vendor;
-    data.product = product;
-    data.version = version;
+    data.vendor = vendor_id;
+    data.product = product_id;
     data.present = SDL_FALSE;
     IDirectInput8_EnumDevices(dinput, DI8DEVCLASS_GAMECTRL, EnumJoystickPresentCallback, &data, DIEDFL_ATTACHEDONLY);
-
     return data.present;
 }
 
@@ -1115,60 +1113,6 @@ TranslatePOV(DWORD value)
     return HAT_VALS[value];
 }
 
-static void
-UpdateDINPUTJoystickState_Buffered(SDL_Joystick * joystick)
-{
-    int i;
-    HRESULT result;
-    DWORD numevents;
-    DIDEVICEOBJECTDATA evtbuf[INPUT_QSIZE];
-
-    numevents = INPUT_QSIZE;
-    result =
-        IDirectInputDevice8_GetDeviceData(joystick->hwdata->InputDevice,
-        sizeof(DIDEVICEOBJECTDATA), evtbuf,
-        &numevents, 0);
-    if (result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) {
-        IDirectInputDevice8_Acquire(joystick->hwdata->InputDevice);
-        result =
-            IDirectInputDevice8_GetDeviceData(joystick->hwdata->InputDevice,
-            sizeof(DIDEVICEOBJECTDATA),
-            evtbuf, &numevents, 0);
-    }
-
-    /* Handle the events or punt */
-    if (FAILED(result)) {
-        return;
-    }
-
-    for (i = 0; i < (int)numevents; ++i) {
-        int j;
-
-        for (j = 0; j < joystick->hwdata->NumInputs; ++j) {
-            const input_t *in = &joystick->hwdata->Inputs[j];
-
-            if (evtbuf[i].dwOfs != in->ofs)
-                continue;
-
-            switch (in->type) {
-            case AXIS:
-                SDL_PrivateJoystickAxis(joystick, in->num, (Sint16)evtbuf[i].dwData);
-                break;
-            case BUTTON:
-                SDL_PrivateJoystickButton(joystick, in->num,
-                    (Uint8)(evtbuf[i].dwData ? SDL_PRESSED : SDL_RELEASED));
-                break;
-            case HAT:
-                {
-                    Uint8 pos = TranslatePOV(evtbuf[i].dwData);
-                    SDL_PrivateJoystickHat(joystick, in->num, pos);
-                }
-                break;
-            }
-        }
-    }
-}
-
 /* Function to update the state of a joystick - called as a device poll.
  * This function shouldn't update the joystick structure directly,
  * but instead should call SDL_PrivateJoystick*() to deliver events
@@ -1240,6 +1184,67 @@ UpdateDINPUTJoystickState_Polled(SDL_Joystick * joystick)
             break;
         }
         }
+    }
+}
+
+static void
+UpdateDINPUTJoystickState_Buffered(SDL_Joystick * joystick)
+{
+    int i;
+    HRESULT result;
+    DWORD numevents;
+    DIDEVICEOBJECTDATA evtbuf[INPUT_QSIZE];
+
+    numevents = INPUT_QSIZE;
+    result =
+        IDirectInputDevice8_GetDeviceData(joystick->hwdata->InputDevice,
+        sizeof(DIDEVICEOBJECTDATA), evtbuf,
+        &numevents, 0);
+    if (result == DIERR_INPUTLOST || result == DIERR_NOTACQUIRED) {
+        IDirectInputDevice8_Acquire(joystick->hwdata->InputDevice);
+        result =
+            IDirectInputDevice8_GetDeviceData(joystick->hwdata->InputDevice,
+            sizeof(DIDEVICEOBJECTDATA),
+            evtbuf, &numevents, 0);
+    }
+
+    /* Handle the events or punt */
+    if (FAILED(result)) {
+        return;
+    }
+
+    for (i = 0; i < (int)numevents; ++i) {
+        int j;
+
+        for (j = 0; j < joystick->hwdata->NumInputs; ++j) {
+            const input_t *in = &joystick->hwdata->Inputs[j];
+
+            if (evtbuf[i].dwOfs != in->ofs)
+                continue;
+
+            switch (in->type) {
+            case AXIS:
+                SDL_PrivateJoystickAxis(joystick, in->num, (Sint16)evtbuf[i].dwData);
+                break;
+            case BUTTON:
+                SDL_PrivateJoystickButton(joystick, in->num,
+                    (Uint8)(evtbuf[i].dwData ? SDL_PRESSED : SDL_RELEASED));
+                break;
+            case HAT:
+                {
+                    Uint8 pos = TranslatePOV(evtbuf[i].dwData);
+                    SDL_PrivateJoystickHat(joystick, in->num, pos);
+                }
+                break;
+            }
+        }
+    }
+
+    if (result == DI_BUFFEROVERFLOW) {
+        /* Our buffer wasn't big enough to hold all the queued events,
+         * so poll the device to make sure we have the complete state.
+         */
+        UpdateDINPUTJoystickState_Polled(joystick);
     }
 }
 
