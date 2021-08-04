@@ -51,6 +51,8 @@
 #include <unistd.h>
 #include <dlfcn.h>
 
+extern void libsdl_initialize_additional(JavaVM*, JNIEnv* env);
+
 #define SDL_JAVA_PREFIX                                 org_libsdl_app
 #define CONCAT1(prefix, class, function)                CONCAT2(prefix, class, function)
 #define CONCAT2(prefix, class, function)                Java_ ## prefix ## _ ## class ## _ ## function
