@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -470,6 +470,10 @@ static int SDLCALL SDL_GameControllerEventWatcher(void *userdata, SDL_Event * ev
  */
 static ControllerMapping_t *SDL_CreateMappingForAndroidController(SDL_JoystickGUID guid)
 {
+    const int face_button_mask = ((1 << SDL_CONTROLLER_BUTTON_A) |
+                                  (1 << SDL_CONTROLLER_BUTTON_B) |
+                                  (1 << SDL_CONTROLLER_BUTTON_X) |
+                                  (1 << SDL_CONTROLLER_BUTTON_Y));
     SDL_bool existing;
     char mapping_string[1024];
     int button_mask;
@@ -578,21 +582,16 @@ static ControllerMapping_t *SDL_CreateMappingForHIDAPIController(SDL_JoystickGUI
 
     SDL_GetJoystickGUIDInfo(guid, &vendor, &product, NULL);
 
-    if (vendor == USB_VENDOR_NINTENDO && product == USB_PRODUCT_NINTENDO_GAMECUBE_ADAPTER) {
+    if ((vendor == USB_VENDOR_NINTENDO && product == USB_PRODUCT_NINTENDO_GAMECUBE_ADAPTER) ||
+        (vendor == USB_VENDOR_SHENZHEN && product == USB_PRODUCT_EVORETRO_GAMECUBE_ADAPTER)) {
         /* GameCube driver has 12 buttons and 6 axes */
         SDL_strlcat(mapping_string, "a:b0,b:b1,dpdown:b6,dpleft:b4,dpright:b5,dpup:b7,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b9,righttrigger:a5,rightx:a2,righty:a3,start:b8,x:b2,y:b3,", sizeof(mapping_string));
     } else {
         /* All other controllers have the standard set of 19 buttons and 6 axes */
-        if (!SDL_IsJoystickNintendoSwitchPro(vendor, product) ||
-            SDL_GetHintBoolean(SDL_HINT_GAMECONTROLLER_USE_BUTTON_LABELS, SDL_TRUE)) {
-            SDL_strlcat(mapping_string, "a:b0,b:b1,back:b4,dpdown:b12,dpleft:b13,dpright:b14,dpup:b11,guide:b5,leftshoulder:b9,leftstick:b7,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b10,rightstick:b8,righttrigger:a5,rightx:a2,righty:a3,start:b6,x:b2,y:b3,", sizeof(mapping_string));
-        } else {
-            /* Nintendo Switch Pro Controller with swapped face buttons to match Xbox Controller physical layout */
-            SDL_strlcat(mapping_string, "a:b1,b:b0,back:b4,dpdown:b12,dpleft:b13,dpright:b14,dpup:b11,guide:b5,leftshoulder:b9,leftstick:b7,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b10,rightstick:b8,righttrigger:a5,rightx:a2,righty:a3,start:b6,x:b3,y:b2,", sizeof(mapping_string));
-        }
+        SDL_strlcat(mapping_string, "a:b0,b:b1,back:b4,dpdown:b12,dpleft:b13,dpright:b14,dpup:b11,guide:b5,leftshoulder:b9,leftstick:b7,lefttrigger:a4,leftx:a0,lefty:a1,rightshoulder:b10,rightstick:b8,righttrigger:a5,rightx:a2,righty:a3,start:b6,x:b2,y:b3,", sizeof(mapping_string));
 
-        if (SDL_IsJoystickXboxOneSeriesX(vendor, product)) {
-            /* XBox One Series X Controllers have a share button under the guide button */
+        if (SDL_IsJoystickXboxSeriesX(vendor, product)) {
+            /* XBox Series X Controllers have a share button under the guide button */
             SDL_strlcat(mapping_string, "misc1:b15,", sizeof(mapping_string));
         } else if (SDL_IsJoystickXboxOneElite(vendor, product)) {
             /* XBox One Elite Controllers have 4 back paddle buttons */
@@ -608,11 +607,18 @@ static ControllerMapping_t *SDL_CreateMappingForHIDAPIController(SDL_JoystickGUI
                 break;
             case SDL_CONTROLLER_TYPE_PS5:
                 /* PS5 controllers have a microphone button and an additional touchpad button */
-                SDL_strlcat(mapping_string, "misc1:b15,touchpad:b16", sizeof(mapping_string));
+                SDL_strlcat(mapping_string, "touchpad:b15,misc1:b16", sizeof(mapping_string));
                 break;
             case SDL_CONTROLLER_TYPE_NINTENDO_SWITCH_PRO:
                 /* Nintendo Switch Pro controllers have a screenshot button */
                 SDL_strlcat(mapping_string, "misc1:b15,", sizeof(mapping_string));
+                /* Joy-Cons have extra buttons in the same place as paddles */
+                if (SDL_IsJoystickNintendoSwitchJoyConLeft(vendor, product)) {
+                    SDL_strlcat(mapping_string, "paddle2:b17,paddle4:b19,", sizeof(mapping_string));
+                }
+                else if (SDL_IsJoystickNintendoSwitchJoyConRight(vendor, product)) {
+                    SDL_strlcat(mapping_string, "paddle1:b16,paddle3:b18,", sizeof(mapping_string));
+                }
                 break;
             case SDL_CONTROLLER_TYPE_AMAZON_LUNA:
                 /* Amazon Luna Controller has a mic button under the guide button */

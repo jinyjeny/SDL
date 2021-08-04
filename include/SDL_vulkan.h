@@ -109,7 +109,7 @@ typedef VkSurfaceKHR SDL_vulkanSurface; /* for compatibility with Tizen */
 extern DECLSPEC int SDLCALL SDL_Vulkan_LoadLibrary(const char *path);
 
 /**
- *  \brief Get the address of the \c vkGetInstanceProcAddr function.
+ * Get the address of the `vkGetInstanceProcAddr` function.
  *
  * This should be called after either calling SDL_Vulkan_LoadLibrary() or
  * creating an SDL_Window with the `SDL_WINDOW_VULKAN` flag.
@@ -119,10 +119,11 @@ extern DECLSPEC int SDLCALL SDL_Vulkan_LoadLibrary(const char *path);
 extern DECLSPEC void *SDLCALL SDL_Vulkan_GetVkGetInstanceProcAddr(void);
 
 /**
- *  \brief Unload the Vulkan loader library previously loaded by
- *         \c SDL_Vulkan_LoadLibrary().
+ * Unload the Vulkan library previously loaded by SDL_Vulkan_LoadLibrary()
  *
- *  \sa SDL_Vulkan_LoadLibrary()
+ * \since This function is available in SDL 2.0.8
+ *
+ * \sa SDL_Vulkan_LoadLibrary
  */
 extern DECLSPEC void SDLCALL SDL_Vulkan_UnloadLibrary(void);
 
@@ -159,57 +160,44 @@ extern DECLSPEC SDL_bool SDLCALL SDL_Vulkan_GetInstanceExtensions(SDL_Window *wi
                                                                   const char **pNames);
 
 /**
- *  \brief Create a Vulkan rendering surface for a window.
+ * Create a Vulkan rendering surface for a window.
  *
- *  \param [in]  window   SDL_Window to which to attach the rendering surface.
- *  \param [in]  instance handle to the Vulkan instance to use.
- *  \param [out] surface  pointer to a VkSurfaceKHR handle to receive the
- *                        handle of the newly created surface.
+ * The `window` must have been created with the `SDL_WINDOW_VULKAN` flag and
+ * `instance` must have been created with extensions returned by
+ * SDL_Vulkan_GetInstanceExtensions() enabled.
  *
- *  \return \c SDL_TRUE on success, \c SDL_FALSE on error.
+ * \param window The window to which to attach the Vulkan surface
+ * \param instance The Vulkan instance handle
+ * \param surface A pointer to a VkSurfaceKHR handle to output the newly
+ *                created surface
+ * \returns SDL_TRUE on success, SDL_FALSE on error.
  *
- *  \code
- *  VkInstance instance;
- *  SDL_Window *window;
+ * \since This function is available in SDL 2.0.8
  *
- *  // create instance and window
- *
- *  // create the Vulkan surface
- *  VkSurfaceKHR surface;
- *  if(!SDL_Vulkan_CreateSurface(window, instance, &surface))
- *      handle_error();
- *  \endcode
- *
- *  \note \a window should have been created with the \c SDL_WINDOW_VULKAN flag.
- *
- *  \note \a instance should have been created with the extensions returned
- *        by \c SDL_Vulkan_CreateSurface() enabled.
- *
- *  \sa SDL_Vulkan_GetInstanceExtensions()
+ * \sa SDL_Vulkan_GetInstanceExtensions
+ * \sa SDL_Vulkan_GetDrawableSize
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_Vulkan_CreateSurface(SDL_Window *window,
                                                           VkInstance instance,
                                                           VkSurfaceKHR* surface);
 
 /**
- *  \brief Get the size of a window's underlying drawable in pixels (for use
- *         with setting viewport, scissor & etc).
+ * Get the size of the window's underlying drawable dimensions in pixels.
  *
  * This may differ from SDL_GetWindowSize() if we're rendering to a high-DPI
  * drawable, i.e. the window was created with `SDL_WINDOW_ALLOW_HIGHDPI` on a
  * platform with high-DPI support (Apple calls this "Retina"), and not
  * disabled by the `SDL_HINT_VIDEO_HIGHDPI_DISABLED` hint.
  *
- * This may differ from SDL_GetWindowSize() if we're rendering to a high-DPI
- * drawable, i.e. the window was created with SDL_WINDOW_ALLOW_HIGHDPI on a
- * platform with high-DPI support (Apple calls this "Retina"), and not disabled
- * by the \c SDL_HINT_VIDEO_HIGHDPI_DISABLED hint.
+ * \param window an SDL_Window for which the size is to be queried
+ * \param w Pointer to the variable to write the width to or NULL
+ * \param h Pointer to the variable to write the height to or NULL
  *
- *  \note On macOS high-DPI support must be enabled for an application by
- *        setting NSHighResolutionCapable to true in its Info.plist.
+ * \since This function is available in SDL 2.0.8
  *
- *  \sa SDL_GetWindowSize()
- *  \sa SDL_CreateWindow()
+ * \sa SDL_GetWindowSize
+ * \sa SDL_CreateWindow
+ * \sa SDL_Vulkan_CreateSurface
  */
 extern DECLSPEC void SDLCALL SDL_Vulkan_GetDrawableSize(SDL_Window * window,
                                                         int *w, int *h);

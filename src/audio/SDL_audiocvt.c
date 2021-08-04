@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -500,19 +500,18 @@ SDL_Convert51To71(SDL_AudioCVT * cvt, SDL_AudioFormat format)
         rb = src[5];
         ls = (lf + lb) * 0.5f;
         rs = (rf + rb) * 0.5f;
-        /* !!! FIXME: these four may clip */
         lf += lf - ls;
-        rf += rf - ls;
+        rf += rf - rs;
         lb += lb - ls;
-        rb += rb - ls;
+        rb += rb - rs;
         dst[3] = src[3];  /* LFE */
         dst[2] = src[2];  /* FC */
         dst[7] = rs; /* SR */
         dst[6] = ls; /* SL */
-        dst[5] = rb;  /* BR */
-        dst[4] = lb;  /* BL */
-        dst[1] = rf;  /* FR */
-        dst[0] = lf;  /* FL */
+        dst[5] = 0.5f * rb;  /* BR */
+        dst[4] = 0.5f * lb;  /* BL */
+        dst[1] = 0.5f * rf;  /* FR */
+        dst[0] = 0.5f * lf;  /* FL */
     }
 
     cvt->len_cvt = cvt->len_cvt * 4 / 3;

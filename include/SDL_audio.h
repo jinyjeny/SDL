@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -18,6 +18,8 @@
      misrepresented as being the original software.
   3. This notice may not be removed or altered from any source distribution.
 */
+
+/* !!! FIXME: several functions in here need Doxygen comments. */
 
 /**
  *  \file SDL_audio.h
@@ -268,8 +270,20 @@ extern DECLSPEC void SDLCALL SDL_AudioQuit(void);
 /* @} */
 
 /**
- *  This function returns the name of the current audio driver, or NULL
- *  if no driver has been initialized.
+ * Get the name of the current audio driver.
+ *
+ * The returned string points to internal static memory and thus never becomes
+ * invalid, even if you quit the audio subsystem and initialize a new driver
+ * (although such a case would return a different static string from another
+ * call to this function, of course). As such, you should not modify or free
+ * the returned string.
+ *
+ * \returns the name of the current audio driver or NULL if no driver has been
+ *          initialized.
+ *
+ * \since This function is available since SDL 2.0.0.
+ *
+ * \sa SDL_AudioInit
  */
 extern DECLSPEC const char *SDLCALL SDL_GetCurrentAudioDriver(void);
 
@@ -352,27 +366,82 @@ typedef Uint32 SDL_AudioDeviceID;
  * successfully open the default device (NULL for first argument of
  * SDL_OpenAudioDevice()).
  *
- *  In many common cases, when this function returns a value <= 0, it can still
- *  successfully open the default device (NULL for first argument of
- *  SDL_OpenAudioDevice()).
+ * This function may trigger a complete redetect of available hardware. It
+ * should not be called for each iteration of a loop, but rather once at the
+ * start of a loop:
+ *
+ * ```c++
+ * // Don't do this:
+ * for (int i = 0; i < SDL_GetNumAudioDevices(0); i++)
+ *
+ * // do this instead:
+ * const int count = SDL_GetNumAudioDevices(0);
+ * for (int i = 0; i < count; ++i) { do_something_here(); }
+ * ```
+ *
+ * \param iscapture zero to request playback devices, non-zero to request
+ *                  recording devices
+ * \returns the number of available devices exposed by the current driver or
+ *          -1 if an explicit list of devices can't be determined. A return
+ *          value of -1 does not necessarily mean an error condition.
+ *
+ * \since This function is available since SDL 2.0.0.
+ *
+ * \sa SDL_GetAudioDeviceName
+ * \sa SDL_OpenAudioDevice
  */
 extern DECLSPEC int SDLCALL SDL_GetNumAudioDevices(int iscapture);
 
 /**
- *  Get the human-readable name of a specific audio device.
- *  Must be a value between 0 and (number of audio devices-1).
- *  Only valid after a successfully initializing the audio subsystem.
- *  The values returned by this function reflect the latest call to
- *  SDL_GetNumAudioDevices(); recall that function to redetect available
- *  hardware.
+ * Get the human-readable name of a specific audio device.
  *
- *  The string returned by this function is UTF-8 encoded, read-only, and
- *  managed internally. You are not to free it. If you need to keep the
- *  string for any length of time, you should make your own copy of it, as it
- *  will be invalid next time any of several other SDL functions is called.
+ * This function is only valid after successfully initializing the audio
+ * subsystem. The values returned by this function reflect the latest call to
+ * SDL_GetNumAudioDevices(); re-call that function to redetect available
+ * hardware.
+ *
+ * The string returned by this function is UTF-8 encoded, read-only, and
+ * managed internally. You are not to free it. If you need to keep the string
+ * for any length of time, you should make your own copy of it, as it will be
+ * invalid next time any of several other SDL functions are called.
+ *
+ * \param index the index of the audio device; valid values range from 0 to
+ *              SDL_GetNumAudioDevices() - 1
+ * \param iscapture non-zero to query the list of recording devices, zero to
+ *                  query the list of output devices.
+ * \returns the name of the audio device at the requested index, or NULL on
+ *          error.
+ *
+ * \sa SDL_GetNumAudioDevices
  */
 extern DECLSPEC const char *SDLCALL SDL_GetAudioDeviceName(int index,
                                                            int iscapture);
+
+/**
+ * Get the preferred audio format of a specific audio device.
+ *
+ * This function is only valid after a successfully initializing the audio
+ * subsystem. The values returned by this function reflect the latest call to
+ * SDL_GetNumAudioDevices(); re-call that function to redetect available
+ * hardware.
+ *
+ * `spec` will be filled with the sample rate, sample format, and channel
+ * count. All other values in the structure are filled with 0. When the
+ * supported struct members are 0, SDL was unable to get the property from the
+ * backend.
+ *
+ * \param index the index of the audio device; valid values range from 0 to
+ *              SDL_GetNumAudioDevices() - 1
+ * \param iscapture non-zero to query the list of recording devices, zero to
+ *                  query the list of output devices.
+ * \param spec The SDL_AudioSpec to be initialized by this function.
+ * \returns 0 on success, nonzero on error
+ *
+ * \sa SDL_GetNumAudioDevices
+ */
+extern DECLSPEC int SDLCALL SDL_GetAudioDeviceSpec(int index,
+                                                   int iscapture,
+                                                   SDL_AudioSpec *spec);
 
 
 /**
@@ -480,16 +549,12 @@ extern DECLSPEC const char *SDLCALL SDL_GetAudioDeviceName(int index,
  * \sa SDL_PauseAudioDevice
  * \sa SDL_UnlockAudioDevice
  */
-extern DECLSPEC SDL_AudioDeviceID SDLCALL SDL_OpenAudioDevice(const char
-                                                              *device,
-                                                              int iscapture,
-                                                              const
-                                                              SDL_AudioSpec *
-                                                              desired,
-                                                              SDL_AudioSpec *
-                                                              obtained,
-                                                              int
-                                                              allowed_changes);
+extern DECLSPEC SDL_AudioDeviceID SDLCALL SDL_OpenAudioDevice(
+                                                  const char *device,
+                                                  int iscapture,
+                                                  const SDL_AudioSpec *desired,
+                                                  SDL_AudioSpec *obtained,
+                                                  int allowed_changes);
 
 
 
@@ -506,9 +571,7 @@ typedef enum
     SDL_AUDIO_PAUSED
 } SDL_AudioStatus;
 extern DECLSPEC SDL_AudioStatus SDLCALL SDL_GetAudioStatus(void);
-
-extern DECLSPEC SDL_AudioStatus SDLCALL
-SDL_GetAudioDeviceStatus(SDL_AudioDeviceID dev);
+extern DECLSPEC SDL_AudioStatus SDLCALL SDL_GetAudioDeviceStatus(SDL_AudioDeviceID dev);
 /* @} *//* Audio State */
 
 /**
@@ -619,7 +682,17 @@ extern DECLSPEC SDL_AudioSpec *SDLCALL SDL_LoadWAV_RW(SDL_RWops * src,
     SDL_LoadWAV_RW(SDL_RWFromFile(file, "rb"),1, spec,audio_buf,audio_len)
 
 /**
- *  This function frees data previously allocated with SDL_LoadWAV_RW()
+ * Free data previously allocated with SDL_LoadWAV() or SDL_LoadWAV_RW().
+ *
+ * After a WAVE file has been opened with SDL_LoadWAV() or SDL_LoadWAV_RW()
+ * its data can eventually be freed with SDL_FreeWAV(). It is safe to call
+ * this function with a NULL pointer.
+ *
+ * \param audio_buf a pointer to the buffer created by SDL_LoadWAV() or
+ *                  SDL_LoadWAV_RW()
+ *
+ * \sa SDL_LoadWAV
+ * \sa SDL_LoadWAV_RW
  */
 extern DECLSPEC void SDLCALL SDL_FreeWAV(Uint8 * audio_buf);
 
@@ -828,11 +901,24 @@ extern DECLSPEC void SDLCALL SDL_FreeAudioStream(SDL_AudioStream *stream);
 
 #define SDL_MIX_MAXVOLUME 128
 /**
- *  This takes two audio buffers of the playing audio format and mixes
- *  them, performing addition, volume adjustment, and overflow clipping.
- *  The volume ranges from 0 - 128, and should be set to ::SDL_MIX_MAXVOLUME
- *  for full audio volume.  Note this does not change hardware volume.
- *  This is provided for convenience -- you can mix your own audio data.
+ * This function is a legacy means of mixing audio.
+ *
+ * This function is equivalent to calling
+ *
+ * ```c++
+ * SDL_MixAudioFormat(dst, src, format, len, volume);
+ * ```
+ *
+ * where `format` is the obtained format of the audio device from the legacy
+ * SDL_OpenAudio() function.
+ *
+ * \param dst the destination for the mixed audio
+ * \param src the source audio buffer to be mixed
+ * \param len the length of the audio buffer in bytes
+ * \param volume ranges from 0 - 128, and should be set to SDL_MIX_MAXVOLUME
+ *               for full audio volume
+ *
+ * \sa SDL_MixAudioFormat
  */
 extern DECLSPEC void SDLCALL SDL_MixAudio(Uint8 * dst, const Uint8 * src,
                                           Uint32 len, int volume);
@@ -968,75 +1054,70 @@ extern DECLSPEC int SDLCALL SDL_QueueAudio(SDL_AudioDeviceID dev, const void *da
 extern DECLSPEC Uint32 SDLCALL SDL_DequeueAudio(SDL_AudioDeviceID dev, void *data, Uint32 len);
 
 /**
- *  Get the number of bytes of still-queued audio.
+ * Get the number of bytes of still-queued audio.
  *
  * For playback devices: this is the number of bytes that have been queued for
  * playback with SDL_QueueAudio(), but have not yet been sent to the hardware.
  *
- *    This is the number of bytes that have been queued for playback with
- *    SDL_QueueAudio(), but have not yet been sent to the hardware. This
- *    number may shrink at any time, so this only informs of pending data.
+ * Once we've sent it to the hardware, this function can not decide the exact
+ * byte boundary of what has been played. It's possible that we just gave the
+ * hardware several kilobytes right before you called this function, but it
+ * hasn't played any of it yet, or maybe half of it, etc.
  *
- *    Once we've sent it to the hardware, this function can not decide the
- *    exact byte boundary of what has been played. It's possible that we just
- *    gave the hardware several kilobytes right before you called this
- *    function, but it hasn't played any of it yet, or maybe half of it, etc.
+ * For capture devices, this is the number of bytes that have been captured by
+ * the device and are waiting for you to dequeue. This number may grow at any
+ * time, so this only informs of the lower-bound of available data.
  *
- *  For capture devices:
+ * You may not queue or dequeue audio on a device that is using an
+ * application-supplied callback; calling this function on such a device
+ * always returns 0. You have to use the audio callback or queue audio, but
+ * not both.
  *
- *    This is the number of bytes that have been captured by the device and
- *    are waiting for you to dequeue. This number may grow at any time, so
- *    this only informs of the lower-bound of available data.
+ * You should not call SDL_LockAudio() on the device before querying; SDL
+ * handles locking internally for this function.
  *
- *  You may not queue audio on a device that is using an application-supplied
- *  callback; calling this function on such a device always returns 0.
- *  You have to queue audio with SDL_QueueAudio()/SDL_DequeueAudio(), or use
- *  the audio callback, but not both.
+ * \param dev the device ID of which we will query queued audio size
+ * \returns the number of bytes (not samples!) of queued audio.
  *
- *  You should not call SDL_LockAudio() on the device before querying; SDL
- *  handles locking internally for this function.
+ * \since This function is available since SDL 2.0.4.
  *
- *  \param dev The device ID of which we will query queued audio size.
- *  \return Number of bytes (not samples!) of queued audio.
- *
- *  \sa SDL_QueueAudio
- *  \sa SDL_ClearQueuedAudio
+ * \sa SDL_ClearQueuedAudio
+ * \sa SDL_QueueAudio
+ * \sa SDL_DequeueAudio
  */
 extern DECLSPEC Uint32 SDLCALL SDL_GetQueuedAudioSize(SDL_AudioDeviceID dev);
 
 /**
- *  Drop any queued audio data. For playback devices, this is any queued data
- *  still waiting to be submitted to the hardware. For capture devices, this
- *  is any data that was queued by the device that hasn't yet been dequeued by
- *  the application.
+ * Drop any queued audio data waiting to be sent to the hardware.
  *
- *  Immediately after this call, SDL_GetQueuedAudioSize() will return 0. For
- *  playback devices, the hardware will start playing silence if more audio
- *  isn't queued. Unpaused capture devices will start filling the queue again
- *  as soon as they have more data available (which, depending on the state
- *  of the hardware and the thread, could be before this function call
- *  returns!).
+ * Immediately after this call, SDL_GetQueuedAudioSize() will return 0. For
+ * output devices, the hardware will start playing silence if more audio isn't
+ * queued. For capture devices, the hardware will start filling the empty
+ * queue with new data if the capture device isn't paused.
  *
- *  This will not prevent playback of queued audio that's already been sent
- *  to the hardware, as we can not undo that, so expect there to be some
- *  fraction of a second of audio that might still be heard. This can be
- *  useful if you want to, say, drop any pending music during a level change
- *  in your game.
+ * This will not prevent playback of queued audio that's already been sent to
+ * the hardware, as we can not undo that, so expect there to be some fraction
+ * of a second of audio that might still be heard. This can be useful if you
+ * want to, say, drop any pending music or any unprocessed microphone input
+ * during a level change in your game.
  *
- *  You may not queue audio on a device that is using an application-supplied
- *  callback; calling this function on such a device is always a no-op.
- *  You have to queue audio with SDL_QueueAudio()/SDL_DequeueAudio(), or use
- *  the audio callback, but not both.
+ * You may not queue or dequeue audio on a device that is using an
+ * application-supplied callback; calling this function on such a device
+ * always returns 0. You have to use the audio callback or queue audio, but
+ * not both.
  *
- *  You should not call SDL_LockAudio() on the device before clearing the
- *  queue; SDL handles locking internally for this function.
+ * You should not call SDL_LockAudio() on the device before clearing the
+ * queue; SDL handles locking internally for this function.
  *
- *  This function always succeeds and thus returns void.
+ * This function always succeeds and thus returns void.
  *
- *  \param dev The device ID of which to clear the audio queue.
+ * \param dev the device ID of which to clear the audio queue
  *
- *  \sa SDL_QueueAudio
- *  \sa SDL_GetQueuedAudioSize
+ * \since This function is available since SDL 2.0.4.
+ *
+ * \sa SDL_GetQueuedAudioSize
+ * \sa SDL_QueueAudio
+ * \sa SDL_DequeueAudio
  */
 extern DECLSPEC void SDLCALL SDL_ClearQueuedAudio(SDL_AudioDeviceID dev);
 
@@ -1057,7 +1138,17 @@ extern DECLSPEC void SDLCALL SDL_UnlockAudioDevice(SDL_AudioDeviceID dev);
 /* @} *//* Audio lock functions */
 
 /**
- *  This function shuts down audio processing and closes the audio device.
+ * This function is a legacy means of closing the audio device.
+ *
+ * This function is equivalent to calling
+ *
+ * ```c++
+ * SDL_CloseAudioDevice(1);
+ * ```
+ *
+ * and is only useful if you used the legacy SDL_OpenAudio() function.
+ *
+ * \sa SDL_OpenAudio
  */
 extern DECLSPEC void SDLCALL SDL_CloseAudio(void);
 extern DECLSPEC void SDLCALL SDL_CloseAudioDevice(SDL_AudioDeviceID dev);

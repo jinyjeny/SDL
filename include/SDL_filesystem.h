@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -38,23 +38,27 @@ extern "C" {
 #endif
 
 /**
- * \brief Get the path where the application resides.
+ * Get the directory where the application was run from.
  *
- * Get the "base path". This is the directory where the application was run
- *  from, which is probably the installation directory, and may or may not
- *  be the process's current working directory.
+ * This is not necessarily a fast call, so you should call this once near
+ * startup and save the string if you need it.
  *
- * This returns an absolute path in UTF-8 encoding, and is guaranteed to
- *  end with a path separator ('\\' on Windows, '/' most other places).
+ * **Mac OS X and iOS Specific Functionality**: If the application is in a
+ * ".app" bundle, this function returns the Resource directory (e.g.
+ * MyApp.app/Contents/Resources/). This behaviour can be overridden by adding
+ * a property to the Info.plist file. Adding a string key with the name
+ * SDL_FILESYSTEM_BASE_DIR_TYPE with a supported value will change the
+ * behaviour.
  *
- * The pointer returned by this function is owned by you. Please call
- *  SDL_free() on the pointer when you are done with it, or it will be a
- *  memory leak. This is not necessarily a fast call, though, so you should
- *  call this once near startup and save the string if you need it.
+ * Supported values for the SDL_FILESYSTEM_BASE_DIR_TYPE property (Given an
+ * application in /Applications/SDLApp/MyApp.app):
  *
- * Some platforms can't determine the application's path, and on other
- *  platforms, this might be meaningless. In such cases, this function will
- *  return NULL.
+ * - `resource`: bundle resource directory (the default). For example:
+ *   `/Applications/SDLApp/MyApp.app/Contents/Resources`
+ * - `bundle`: the Bundle directory. Fpr example:
+ *   `/Applications/SDLApp/MyApp.app/`
+ * - `parent`: the containing directory of the bundle. For example:
+ *   `/Applications/SDLApp/`
  *
  * The returned path is guaranteed to end with a path separator ('\' on
  * Windows, '/' on most other platforms).
@@ -74,21 +78,23 @@ extern "C" {
 extern DECLSPEC char *SDLCALL SDL_GetBasePath(void);
 
 /**
- * \brief Get the user-and-app-specific path where files can be written.
+ * Get the user-and-app-specific path where files can be written.
  *
  * Get the "pref dir". This is meant to be where users can write personal
- *  files (preferences and save games, etc) that are specific to your
- *  application. This directory is unique per user, per application.
+ * files (preferences and save games, etc) that are specific to your
+ * application. This directory is unique per user, per application.
  *
  * This function will decide the appropriate location in the native
  * filesystem, create the directory if necessary, and return a string of the
  * absolute path to the directory in UTF-8 encoding.
  *
  * On Windows, the string might look like:
- *  "C:\\Users\\bob\\AppData\\Roaming\\My Company\\My Program Name\\"
  *
- * On Linux, the string might look like:
- *  "/home/bob/.local/share/My Program Name/"
+ * `C:\\Users\\bob\\AppData\\Roaming\\My Company\\My Program Name\\`
+ *
+ * On Linux, the string might look like"
+ *
+ * `/home/bob/.local/share/My Program Name/`
  *
  * On Mac OS X, the string might look like:
  *

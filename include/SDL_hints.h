@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -616,6 +616,26 @@ extern "C" {
 #define SDL_HINT_JOYSTICK_HIDAPI_PS4 "SDL_JOYSTICK_HIDAPI_PS4"
 
 /**
+ *  \brief  A variable controlling whether extended input reports should be used for PS4 controllers when using the HIDAPI driver.
+ *
+ *  This variable can be set to the following values:
+ *    "0"       - extended reports are not enabled (the default)
+ *    "1"       - extended reports
+ *
+ *  Extended input reports allow rumble on Bluetooth PS4 controllers, but
+ *  break DirectInput handling for applications that don't use SDL.
+ *
+ *  Once extended reports are enabled, they can not be disabled without
+ *  power cycling the controller.
+ *
+ *  For compatibility with applications written for versions of SDL prior
+ *  to the introduction of PS5 controller support, this value will also
+ *  control the state of extended reports on PS5 controllers when the
+ *  SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE hint is not explicitly set.
+ */
+#define SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE "SDL_JOYSTICK_HIDAPI_PS4_RUMBLE"
+
+/**
  *  \brief  A variable controlling whether the HIDAPI driver for PS5 controllers should be used.
  *
  *  This variable can be set to the following values:
@@ -642,11 +662,15 @@ extern "C" {
  *    "0"       - extended reports are not enabled (the default)
  *    "1"       - extended reports
  *
- *  Extended input reports allow rumble on Bluetooth PS4 controllers, but
+ *  Extended input reports allow rumble on Bluetooth PS5 controllers, but
  *  break DirectInput handling for applications that don't use SDL.
  *
  *  Once extended reports are enabled, they can not be disabled without
  *  power cycling the controller.
+ *
+ *  For compatibility with applications written for versions of SDL prior
+ *  to the introduction of PS5 controller support, this value defaults to
+ *  the value of SDL_HINT_JOYSTICK_HIDAPI_PS4_RUMBLE.
  */
 #define SDL_HINT_JOYSTICK_HIDAPI_PS5_RUMBLE "SDL_JOYSTICK_HIDAPI_PS5_RUMBLE"
 
@@ -1683,42 +1707,74 @@ typedef enum
 
 
 /**
- *  \brief Set a hint with a specific priority
+ * Set a hint with a specific priority.
  *
- *  The priority controls the behavior when setting a hint that already
- *  has a value.  Hints will replace existing hints of their priority and
- *  lower.  Environment variables are considered to have override priority.
+ * The priority controls the behavior when setting a hint that already has a
+ * value. Hints will replace existing hints of their priority and lower.
+ * Environment variables are considered to have override priority.
  *
- *  \return SDL_TRUE if the hint was set, SDL_FALSE otherwise
+ * \param name the hint to set
+ * \param value the value of the hint variable
+ * \param priority the SDL_HintPriority level for the hint
+ * \returns SDL_TRUE if the hint was set, SDL_FALSE otherwise.
+ *
+ * \sa SDL_GetHint
+ * \sa SDL_SetHint
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_SetHintWithPriority(const char *name,
                                                          const char *value,
                                                          SDL_HintPriority priority);
 
 /**
- *  \brief Set a hint with normal priority
+ * Set a hint with normal priority.
  *
- *  \return SDL_TRUE if the hint was set, SDL_FALSE otherwise
+ * Hints will not be set if there is an existing override hint or environment
+ * variable that takes precedence. You can use SDL_SetHintWithPriority() to
+ * set the hint with override priority instead.
+ *
+ * \param name the hint to set
+ * \param value the value of the hint variable
+ * \returns SDL_TRUE if the hint was set, SDL_FALSE otherwise.
+ *
+ * \sa SDL_GetHint
+ * \sa SDL_SetHintWithPriority
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_SetHint(const char *name,
                                              const char *value);
 
 /**
- *  \brief Get a hint
+ * Get the value of a hint.
  *
- *  \return The string value of a hint variable.
+ * \param name the hint to query
+ * \returns the string value of a hint or NULL if the hint isn't set.
+ *
+ * \sa SDL_SetHint
+ * \sa SDL_SetHintWithPriority
  */
 extern DECLSPEC const char * SDLCALL SDL_GetHint(const char *name);
 
 /**
- *  \brief Get a hint
+ * Get the boolean value of a hint variable.
  *
- *  \return The boolean value of a hint variable.
+ * \param name the name of the hint to get the boolean value from
+ * \param default_value the value to return if the hint does not exist
+ * \returns the boolean value of a hint or the provided default value if the
+ *          hint does not exist.
+ *
+ * \since This function is available since SDL 2.0.5.
+ *
+ * \sa SDL_GetHint
+ * \sa SDL_SetHint
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_GetHintBoolean(const char *name, SDL_bool default_value);
 
 /**
- * \brief type definition of the hint callback function.
+ * Type definition of the hint callback function.
+ *
+ * \param userdata what was passed as `userdata` to SDL_AddHintCallback()
+ * \param name what was passed as `name` to SDL_AddHintCallback()
+ * \param oldValue the previous hint value
+ * \param newValue the new value hint is to be set to
  */
 typedef void (SDLCALL *SDL_HintCallback)(void *userdata, const char *name, const char *oldValue, const char *newValue);
 
@@ -1730,9 +1786,9 @@ typedef void (SDLCALL *SDL_HintCallback)(void *userdata, const char *name, const
  *                 hint value changes
  * \param userdata a pointer to pass to the callback function
  *
- *  \param name The hint to watch
- *  \param callback The function to call when the hint value changes
- *  \param userdata A pointer to pass to the callback function
+ * \since This function is available since SDL 2.0.0.
+ *
+ * \sa SDL_DelHintCallback
  */
 extern DECLSPEC void SDLCALL SDL_AddHintCallback(const char *name,
                                                  SDL_HintCallback callback,
@@ -1748,18 +1804,16 @@ extern DECLSPEC void SDLCALL SDL_AddHintCallback(const char *name,
  *
  * \since This function is available since SDL 2.0.0.
  *
- *  \param name The hint being watched
- *  \param callback The function being called when the hint value changes
- *  \param userdata A pointer being passed to the callback function
+ * \sa SDL_AddHintCallback
  */
 extern DECLSPEC void SDLCALL SDL_DelHintCallback(const char *name,
                                                  SDL_HintCallback callback,
                                                  void *userdata);
 
 /**
- *  \brief  Clear all hints
+ * Clear all hints.
  *
- *  This function is called during SDL_Quit() to free stored hints.
+ * This function is automatically called during SDL_Quit().
  */
 extern DECLSPEC void SDLCALL SDL_ClearHints(void);
 

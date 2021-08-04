@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -270,7 +270,7 @@ SDL_CreateDeviceNotification(SDL_DeviceNotificationData *data)
     data->coinitialized = WIN_CoInitialize();
 
     data->wincl.hInstance = GetModuleHandle(NULL);
-    data->wincl.lpszClassName = L"Message";
+    data->wincl.lpszClassName = TEXT("Message");
     data->wincl.lpfnWndProc = SDL_PrivateJoystickDetectProc;      /* This function is called by windows */
     data->wincl.cbSize = sizeof (WNDCLASSEX);
 
@@ -280,7 +280,7 @@ SDL_CreateDeviceNotification(SDL_DeviceNotificationData *data)
         return -1;
     }
 
-    data->messageWindow = (HWND)CreateWindowEx(0,  L"Message", NULL, 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, NULL, NULL);
+    data->messageWindow = (HWND)CreateWindowEx(0,  TEXT("Message"), NULL, 0, 0, 0, 0, 0, HWND_MESSAGE, NULL, NULL, NULL);
     if (!data->messageWindow) {
         WIN_SetError("Failed to create message window for joystick autodetect");
         SDL_CleanupDeviceNotification(data);
@@ -466,6 +466,7 @@ WINDOWS_JoystickInit(void)
             return -1;
         }
     }
+#endif
     return 0;
 }
 
@@ -519,11 +520,11 @@ WINDOWS_JoystickDetect(void)
 
         if (pCurList->bXInputDevice) {
 #if SDL_HAPTIC_XINPUT
-            SDL_XINPUT_MaybeRemoveDevice(pCurList->XInputUserId);
+            SDL_XINPUT_HapticMaybeRemoveDevice(pCurList->XInputUserId);
 #endif
         } else {
 #if SDL_HAPTIC_DINPUT
-            SDL_DINPUT_MaybeRemoveDevice(&pCurList->dxdevice);
+            SDL_DINPUT_HapticMaybeRemoveDevice(&pCurList->dxdevice);
 #endif
         }
 
@@ -539,11 +540,11 @@ WINDOWS_JoystickDetect(void)
         if (pCurList->send_add_event) {
             if (pCurList->bXInputDevice) {
 #if SDL_HAPTIC_XINPUT
-                SDL_XINPUT_MaybeAddDevice(pCurList->XInputUserId);
+                SDL_XINPUT_HapticMaybeAddDevice(pCurList->XInputUserId);
 #endif
             } else {
 #if SDL_HAPTIC_DINPUT
-                SDL_DINPUT_MaybeAddDevice(&pCurList->dxdevice);
+                SDL_DINPUT_HapticMaybeAddDevice(&pCurList->dxdevice);
 #endif
             }
 

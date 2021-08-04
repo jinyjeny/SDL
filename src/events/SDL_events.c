@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -683,6 +683,11 @@ SDL_PeepEvents(SDL_Event * events, int numevents, SDL_eventaction action,
     } else {
         return SDL_SetError("Couldn't lock event queue");
     }
+
+    if (used > 0 && action == SDL_ADDEVENT) {
+        SDL_SendWakeupEvent();
+    }
+
     return (used);
 }
 
@@ -865,10 +870,26 @@ SDL_WaitEvent(SDL_Event * event)
 int
 SDL_WaitEventTimeout(SDL_Event * event, int timeout)
 {
+    SDL_VideoDevice *_this = SDL_GetVideoDevice();
+    SDL_Window *wakeup_window;
     Uint32 expiration = 0;
 
     if (timeout > 0)
         expiration = SDL_GetTicks() + timeout;
+
+    if (timeout != 0 && _this && _this->WaitEventTimeout && _this->SendWakeupEvent && !SDL_events_need_polling()) {
+        /* Look if a shown window is available to send the wakeup event. */
+        wakeup_window = SDL_find_active_window(_this);
+        if (wakeup_window) {
+            int status = SDL_WaitEventTimeout_Device(_this, wakeup_window, event, timeout);
+
+            /* There may be implementation-defined conditions where the backend cannot
+               reliably wait for the next event. If that happens, fall back to polling. */
+            if (status >= 0) {
+                return status;
+            }
+        }
+    }
 
     for (;;) {
         SDL_PumpEvents();

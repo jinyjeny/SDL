@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -52,6 +52,7 @@ typedef struct {
     SDL_Window *sdlwindow;
     SDL_VideoData *waylandData;
     struct wl_surface *surface;
+    struct wl_callback *frame_callback;
     union {
 #ifdef HAVE_LIBDECOR_H
         SDL_libdecor_surface libdecor;
@@ -83,17 +84,26 @@ typedef struct {
 } SDL_WindowData;
 
 extern void Wayland_ShowWindow(_THIS, SDL_Window *window);
+extern void Wayland_HideWindow(_THIS, SDL_Window *window);
+extern void Wayland_RaiseWindow(_THIS, SDL_Window *window);
 extern void Wayland_SetWindowFullscreen(_THIS, SDL_Window * window,
                                         SDL_VideoDisplay * _display,
                                         SDL_bool fullscreen);
 extern void Wayland_MaximizeWindow(_THIS, SDL_Window * window);
-extern void Wayland_SetWindowGrab(_THIS, SDL_Window * window, SDL_bool grabbed);
+extern void Wayland_MinimizeWindow(_THIS, SDL_Window * window);
+extern void Wayland_SetWindowMouseGrab(_THIS, SDL_Window * window, SDL_bool grabbed);
+extern void Wayland_SetWindowKeyboardGrab(_THIS, SDL_Window *window, SDL_bool grabbed);
 extern void Wayland_RestoreWindow(_THIS, SDL_Window * window);
 extern void Wayland_SetWindowBordered(_THIS, SDL_Window * window, SDL_bool bordered);
+extern void Wayland_SetWindowResizable(_THIS, SDL_Window * window, SDL_bool resizable);
 extern int Wayland_CreateWindow(_THIS, SDL_Window *window);
 extern void Wayland_SetWindowSize(_THIS, SDL_Window * window);
+extern void Wayland_SetWindowMinimumSize(_THIS, SDL_Window * window);
+extern void Wayland_SetWindowMaximumSize(_THIS, SDL_Window * window);
+extern int Wayland_SetWindowModalFor(_THIS, SDL_Window * modal_window, SDL_Window * parent_window);
 extern void Wayland_SetWindowTitle(_THIS, SDL_Window * window);
 extern void Wayland_DestroyWindow(_THIS, SDL_Window *window);
+extern void Wayland_SuspendScreenSaver(_THIS);
 
 extern SDL_bool
 Wayland_GetWindowWMInfo(_THIS, SDL_Window * window, SDL_SysWMinfo * info);

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -34,11 +34,20 @@
 /* Visual Studio 2005 has a bug where intrin.h conflicts with winnt.h */
 #if defined(_MSC_VER) && (_MSC_VER >= 1500) && (defined(_M_IX86) || defined(_M_X64))
 #ifdef __clang__
-/* Many of the intrinsics SDL uses are not implemented by clang with Visual Studio */
-#undef __MMX__
-#undef __SSE__
-#undef __SSE2__
-#else
+/* As of Clang 11, '_m_prefetchw' is conflicting with the winnt.h's version,
+   so we define the needed '_m_prefetch' here as a pseudo-header, until the issue is fixed. */
+
+#ifndef __PRFCHWINTRIN_H
+#define __PRFCHWINTRIN_H
+
+static __inline__ void __attribute__((__always_inline__, __nodebug__))
+_m_prefetch(void *__P)
+{
+  __builtin_prefetch (__P, 0, 3 /* _MM_HINT_T0 */);
+}
+
+#endif /* __PRFCHWINTRIN_H */
+#endif /* __clang__ */
 #include <intrin.h>
 #ifndef _WIN64
 #ifndef __MMX__
@@ -54,9 +63,11 @@
 #ifndef __SSE2__
 #define __SSE2__
 #endif
-#endif /* __clang__ */
 #elif defined(__MINGW64_VERSION_MAJOR)
 #include <intrin.h>
+#if !defined(SDL_DISABLE_ARM_NEON_H) && defined(__ARM_NEON)
+#  include <arm_neon.h>
+#endif
 #else
 /* altivec.h redefining bool causes a number of problems, see bugs 3993 and 4392, so you need to explicitly define SDL_ENABLE_ALTIVEC_H to have it included. */
 #if defined(HAVE_ALTIVEC_H) && defined(__ALTIVEC__) && !defined(__APPLE_ALTIVEC__) && defined(SDL_ENABLE_ALTIVEC_H)
@@ -79,6 +90,8 @@
 #    endif
 #  endif
 #endif
+#endif /* compiler version */
+
 #if defined(__3dNOW__) && !defined(SDL_DISABLE_MM3DNOW_H)
 #include <mm3dnow.h>
 #endif
@@ -98,7 +111,6 @@
 #include <pmmintrin.h>
 #endif
 #endif /* HAVE_IMMINTRIN_H */
-#endif /* compiler version */
 
 #include "begin_code.h"
 /* Set up for C function definitions, even when using C++ */
@@ -114,20 +126,45 @@ extern "C" {
 #define SDL_CACHELINE_SIZE  128
 
 /**
- *  This function returns the number of CPU cores available.
+ * Get the number of CPU cores available.
+ *
+ * \returns the total number of logical CPU cores. On CPUs that include
+ *          technologies such as hyperthreading, the number of logical cores
+ *          may be more than the number of physical cores.
+ *
+ * \since This function is available since SDL 2.0.0.
  */
 extern DECLSPEC int SDLCALL SDL_GetCPUCount(void);
 
 /**
- *  This function returns the L1 cache line size of the CPU
+ * Determine the L1 cache line size of the CPU.
  *
- *  This is useful for determining multi-threaded structure padding
- *  or SIMD prefetch sizes.
+ * This is useful for determining multi-threaded structure padding or SIMD
+ * prefetch sizes.
+ *
+ * \returns the L1 cache line size of the CPU, in bytes.
+ *
+ * \since This function is available since SDL 2.0.0.
  */
 extern DECLSPEC int SDLCALL SDL_GetCPUCacheLineSize(void);
 
 /**
- *  This function returns true if the CPU has the RDTSC instruction.
+ * Determine whether the CPU has the RDTSC instruction.
+ *
+ * This always returns false on CPUs that aren't using Intel instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has the RDTSC instruction or SDL_FALSE if not.
+ *
+ * \sa SDL_Has3DNow
+ * \sa SDL_HasAltiVec
+ * \sa SDL_HasAVX
+ * \sa SDL_HasAVX2
+ * \sa SDL_HasMMX
+ * \sa SDL_HasSSE
+ * \sa SDL_HasSSE2
+ * \sa SDL_HasSSE3
+ * \sa SDL_HasSSE41
+ * \sa SDL_HasSSE42
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasRDTSC(void);
 
@@ -153,72 +190,233 @@ extern DECLSPEC SDL_bool SDLCALL SDL_HasRDTSC(void);
 extern DECLSPEC SDL_bool SDLCALL SDL_HasAltiVec(void);
 
 /**
- *  This function returns true if the CPU has MMX features.
+ * Determine whether the CPU has MMX features.
+ *
+ * This always returns false on CPUs that aren't using Intel instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has MMX features or SDL_FALSE if not.
+ *
+ * \sa SDL_Has3DNow
+ * \sa SDL_HasAltiVec
+ * \sa SDL_HasAVX
+ * \sa SDL_HasAVX2
+ * \sa SDL_HasRDTSC
+ * \sa SDL_HasSSE
+ * \sa SDL_HasSSE2
+ * \sa SDL_HasSSE3
+ * \sa SDL_HasSSE41
+ * \sa SDL_HasSSE42
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasMMX(void);
 
 /**
- *  This function returns true if the CPU has 3DNow! features.
+ * Determine whether the CPU has 3DNow! features.
+ *
+ * This always returns false on CPUs that aren't using AMD instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has 3DNow! features or SDL_FALSE if not.
+ *
+ * \sa SDL_HasAltiVec
+ * \sa SDL_HasAVX
+ * \sa SDL_HasAVX2
+ * \sa SDL_HasMMX
+ * \sa SDL_HasRDTSC
+ * \sa SDL_HasSSE
+ * \sa SDL_HasSSE2
+ * \sa SDL_HasSSE3
+ * \sa SDL_HasSSE41
+ * \sa SDL_HasSSE42
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_Has3DNow(void);
 
 /**
- *  This function returns true if the CPU has SSE features.
+ * Determine whether the CPU has SSE features.
+ *
+ * This always returns false on CPUs that aren't using Intel instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has SSE features or SDL_FALSE if not.
+ *
+ * \sa SDL_Has3DNow
+ * \sa SDL_HasAltiVec
+ * \sa SDL_HasAVX
+ * \sa SDL_HasAVX2
+ * \sa SDL_HasMMX
+ * \sa SDL_HasRDTSC
+ * \sa SDL_HasSSE2
+ * \sa SDL_HasSSE3
+ * \sa SDL_HasSSE41
+ * \sa SDL_HasSSE42
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasSSE(void);
 
 /**
- *  This function returns true if the CPU has SSE2 features.
+ * Determine whether the CPU has SSE2 features.
+ *
+ * This always returns false on CPUs that aren't using Intel instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has SSE2 features or SDL_FALSE if not.
+ *
+ * \sa SDL_Has3DNow
+ * \sa SDL_HasAltiVec
+ * \sa SDL_HasAVX
+ * \sa SDL_HasAVX2
+ * \sa SDL_HasMMX
+ * \sa SDL_HasRDTSC
+ * \sa SDL_HasSSE
+ * \sa SDL_HasSSE3
+ * \sa SDL_HasSSE41
+ * \sa SDL_HasSSE42
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasSSE2(void);
 
 /**
- *  This function returns true if the CPU has SSE3 features.
+ * Determine whether the CPU has SSE3 features.
+ *
+ * This always returns false on CPUs that aren't using Intel instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has SSE3 features or SDL_FALSE if not.
+ *
+ * \sa SDL_Has3DNow
+ * \sa SDL_HasAltiVec
+ * \sa SDL_HasAVX
+ * \sa SDL_HasAVX2
+ * \sa SDL_HasMMX
+ * \sa SDL_HasRDTSC
+ * \sa SDL_HasSSE
+ * \sa SDL_HasSSE2
+ * \sa SDL_HasSSE41
+ * \sa SDL_HasSSE42
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasSSE3(void);
 
 /**
- *  This function returns true if the CPU has SSE4.1 features.
+ * Determine whether the CPU has SSE4.1 features.
+ *
+ * This always returns false on CPUs that aren't using Intel instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has SSE4.1 features or SDL_FALSE if not.
+ *
+ * \sa SDL_Has3DNow
+ * \sa SDL_HasAltiVec
+ * \sa SDL_HasAVX
+ * \sa SDL_HasAVX2
+ * \sa SDL_HasMMX
+ * \sa SDL_HasRDTSC
+ * \sa SDL_HasSSE
+ * \sa SDL_HasSSE2
+ * \sa SDL_HasSSE3
+ * \sa SDL_HasSSE42
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasSSE41(void);
 
 /**
- *  This function returns true if the CPU has SSE4.2 features.
+ * Determine whether the CPU has SSE4.2 features.
+ *
+ * This always returns false on CPUs that aren't using Intel instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has SSE4.2 features or SDL_FALSE if not.
+ *
+ * \sa SDL_Has3DNow
+ * \sa SDL_HasAltiVec
+ * \sa SDL_HasAVX
+ * \sa SDL_HasAVX2
+ * \sa SDL_HasMMX
+ * \sa SDL_HasRDTSC
+ * \sa SDL_HasSSE
+ * \sa SDL_HasSSE2
+ * \sa SDL_HasSSE3
+ * \sa SDL_HasSSE41
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasSSE42(void);
 
 /**
- *  This function returns true if the CPU has AVX features.
+ * Determine whether the CPU has AVX features.
+ *
+ * This always returns false on CPUs that aren't using Intel instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has AVX features or SDL_FALSE if not.
+ *
+ * \since This function is available since SDL 2.0.2.
+ *
+ * \sa SDL_Has3DNow
+ * \sa SDL_HasAltiVec
+ * \sa SDL_HasAVX2
+ * \sa SDL_HasMMX
+ * \sa SDL_HasRDTSC
+ * \sa SDL_HasSSE
+ * \sa SDL_HasSSE2
+ * \sa SDL_HasSSE3
+ * \sa SDL_HasSSE41
+ * \sa SDL_HasSSE42
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasAVX(void);
 
 /**
- *  This function returns true if the CPU has AVX2 features.
+ * Determine whether the CPU has AVX2 features.
+ *
+ * This always returns false on CPUs that aren't using Intel instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has AVX2 features or SDL_FALSE if not.
+ *
+ * \since This function is available since SDL 2.0.4.
+ *
+ * \sa SDL_Has3DNow
+ * \sa SDL_HasAltiVec
+ * \sa SDL_HasAVX
+ * \sa SDL_HasMMX
+ * \sa SDL_HasRDTSC
+ * \sa SDL_HasSSE
+ * \sa SDL_HasSSE2
+ * \sa SDL_HasSSE3
+ * \sa SDL_HasSSE41
+ * \sa SDL_HasSSE42
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasAVX2(void);
 
 /**
- *  This function returns true if the CPU has AVX-512F (foundation) features.
+ * Determine whether the CPU has AVX-512F (foundation) features.
+ *
+ * This always returns false on CPUs that aren't using Intel instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has AVX-512F features or SDL_FALSE if not.
+ *
+ * \sa SDL_HasAVX
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasAVX512F(void);
 
 /**
- *  This function returns true if the CPU has ARM SIMD (ARMv6) features.
+ * Determine whether the CPU has ARM SIMD (ARMv6) features.
+ *
+ * This is different from ARM NEON, which is a different instruction set.
+ *
+ * This always returns false on CPUs that aren't using ARM instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has ARM SIMD features or SDL_FALSE if not.
+ *
+ * \sa SDL_HasNEON
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasARMSIMD(void);
 
 /**
- *  This function returns true if the CPU has NEON (ARM SIMD) features.
+ * Determine whether the CPU has NEON (ARM SIMD) features.
+ *
+ * This always returns false on CPUs that aren't using ARM instruction sets.
+ *
+ * \returns SDL_TRUE if the CPU has ARM NEON features or SDL_FALSE if not.
  */
 extern DECLSPEC SDL_bool SDLCALL SDL_HasNEON(void);
 
 /**
- *  This function returns the amount of RAM configured in the system, in MB.
+ * Get the amount of RAM configured in the system.
+ *
+ * \returns the amount of RAM configured in the system in MB.
+ *
+ * \since This function is available since SDL 2.0.1.
  */
 extern DECLSPEC int SDLCALL SDL_GetSystemRAM(void);
 
 /**
- * \brief Report the alignment this system needs for SIMD allocations.
+ * Report the alignment this system needs for SIMD allocations.
  *
  * This will return the minimum number of bytes to which a pointer must be
  * aligned to be compatible with SIMD instructions on the current machine. For
@@ -235,7 +433,7 @@ extern DECLSPEC int SDLCALL SDL_GetSystemRAM(void);
 extern DECLSPEC size_t SDLCALL SDL_SIMDGetAlignment(void);
 
 /**
- * \brief Allocate memory in a SIMD-friendly way.
+ * Allocate memory in a SIMD-friendly way.
  *
  * This will allocate a block of memory that is suitable for use with SIMD
  * instructions. Specifically, it will be properly aligned and padded for the
@@ -258,7 +456,8 @@ extern DECLSPEC size_t SDLCALL SDL_SIMDGetAlignment(void);
  * through here.
  *
  * SDL_AllocSIMD(0) will return a non-NULL pointer, assuming the system isn't
- *  out of memory.
+ * out of memory, but you are not allowed to dereference it (because you only
+ * own zero bytes of that buffer).
  *
  * \param len The length, in bytes, of the block to allocate. The actual
  *            allocated block might be larger due to padding, etc.
@@ -271,7 +470,7 @@ extern DECLSPEC size_t SDLCALL SDL_SIMDGetAlignment(void);
 extern DECLSPEC void * SDLCALL SDL_SIMDAlloc(const size_t len);
 
 /**
- * \brief Reallocate memory obtained from SDL_SIMDAlloc
+ * Reallocate memory obtained from SDL_SIMDAlloc
  *
  * It is not valid to use this function on a pointer from anything but
  * SDL_SIMDAlloc(). It can't be used on pointers from malloc, realloc,
@@ -293,11 +492,11 @@ extern DECLSPEC void * SDLCALL SDL_SIMDAlloc(const size_t len);
 extern DECLSPEC void * SDLCALL SDL_SIMDRealloc(void *mem, const size_t len);
 
 /**
- * \brief Deallocate memory obtained from SDL_SIMDAlloc
+ * Deallocate memory obtained from SDL_SIMDAlloc
  *
  * It is not valid to use this function on a pointer from anything but
- *  SDL_SIMDAlloc(). It can't be used on pointers from malloc, realloc,
- *  SDL_malloc, memalign, new[], etc.
+ * SDL_SIMDAlloc() or SDL_SIMDRealloc(). It can't be used on pointers from
+ * malloc, realloc, SDL_malloc, memalign, new[], etc.
  *
  * However, SDL_SIMDFree(NULL) is a legal no-op.
  *
@@ -314,7 +513,6 @@ extern DECLSPEC void * SDLCALL SDL_SIMDRealloc(void *mem, const size_t len);
  */
 extern DECLSPEC void SDLCALL SDL_SIMDFree(void *ptr);
 
-/* vi: set ts=4 sw=4 expandtab: */
 /* Ends C function definitions when using C++ */
 #ifdef __cplusplus
 }

@@ -1,6 +1,6 @@
 /*
   Simple DirectMedia Layer
-  Copyright (C) 1997-2020 Sam Lantinga <slouken@libsdl.org>
+  Copyright (C) 1997-2021 Sam Lantinga <slouken@libsdl.org>
 
   This software is provided 'as-is', without any express or implied
   warranty.  In no event will the authors be held liable for any damages
@@ -91,6 +91,7 @@ static NSString *GCInputXboxShareButton = @"Button Share";
 #define ENABLE_MFI_RUMBLE
 #define ENABLE_MFI_LIGHT
 #define ENABLE_MFI_SENSORS
+#define ENABLE_MFI_SYSTEM_GESTURE_STATE
 #define ENABLE_PHYSICAL_INPUT_PROFILE
 #endif
 
@@ -199,7 +200,7 @@ IOS_AddMFIJoystickDevice(SDL_JoystickDeviceItem *device, GCController *controlle
         BOOL is_ps4 = IsControllerPS4(controller);
         BOOL is_ps5 = IsControllerPS5(controller);
 #if TARGET_OS_TV
-        BOOL is_MFi = (!is_xbox && !is_ps4);
+        BOOL is_MFi = (!is_xbox && !is_ps4 && !is_ps5);
 #endif
         int nbuttons = 0;
 
